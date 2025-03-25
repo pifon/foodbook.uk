@@ -3,9 +3,7 @@
 
 ## About Foodbook
 
-Foodbook is plan to build comperhensive kitchem application
+Foodbook is Frontend to API build to serve comperhensive kitchem application
 
 
-## License
 
-Here comes license
