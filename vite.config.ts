@@ -1,36 +1,23 @@
+import tailwindcss from '@tailwindcss/vite';
 import vue from '@vitejs/plugin-vue';
-import autoprefixer from 'autoprefixer';
-import laravel from 'laravel-vite-plugin';
-import path from 'path';
-import tailwindcss from 'tailwindcss';
-import { resolve } from 'node:path';
+import { fileURLToPath, URL } from 'node:url';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-    plugins: [
-        laravel({
-            input: ['resources/js/app.ts'],
-            ssr: 'resources/js/ssr.ts',
-            refresh: true,
-        }),
-        vue({
-            template: {
-                transformAssetUrls: {
-                    base: null,
-                    includeAbsolute: false,
-                },
-            },
-        }),
-    ],
-    resolve: {
-        alias: {
-            '@': path.resolve(__dirname, './resources/js'),
-            'ziggy-js': resolve(__dirname, 'vendor/tightenco/ziggy'),
-        },
+  plugins: [vue(), tailwindcss()],
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
-    css: {
-        postcss: {
-            plugins: [tailwindcss, autoprefixer],
-        },
+  },
+  server: {
+    port: 3000,
+    proxy: {
+      '/api': {
+        target: 'https://pifon/api',
+        changeOrigin: true,
+        secure: false,
+      },
     },
+  },
 });
