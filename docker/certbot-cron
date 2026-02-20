@@ -1,0 +1,1 @@
+0 3 20 * * /usr/local/bin/certbot-renew.sh >> /var/log/certbot-renew.log 2>&1

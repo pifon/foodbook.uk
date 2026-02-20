@@ -1,0 +1,24 @@
+services:
+  client:
+    image: client
+    container_name: client
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    volumes:
+      - .:/var/www/html
+      - /var/www/html/vendor
+      - /var/www/html/node_modules
+      - /var/www/html/public/build
+      - /etc/letsencrypt:/etc/letsencrypt
+    env_file:
+      - .env
+    networks:
+      - client_laravel-network
+
+networks:
+  client_laravel-network:
+    driver: bridge
