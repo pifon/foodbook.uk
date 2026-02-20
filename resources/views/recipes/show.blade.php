@@ -24,7 +24,15 @@
                     @endif
                 </div>
 
-                <h1 class="text-3xl font-bold text-gray-900">{{ $recipe['title'] }}</h1>
+                <div class="flex items-center gap-3">
+                    <h1 class="text-3xl font-bold text-gray-900">{{ $recipe['title'] }}</h1>
+                    @if(session('api_token'))
+                        <a href="{{ route('recipes.edit', $recipe['slug'] ?? $recipe['id']) }}"
+                            class="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50">
+                            Edit
+                        </a>
+                    @endif
+                </div>
 
                 @if(!empty($recipe['description']))
                     <p class="mt-2 text-gray-600">{{ $recipe['description'] }}</p>

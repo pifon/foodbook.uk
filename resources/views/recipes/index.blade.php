@@ -6,18 +6,29 @@
     <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 class="text-2xl font-bold text-gray-900">Recipes</h1>
 
-        <form class="flex gap-2" method="GET" action="{{ route('recipes.index') }}">
-            <input
-                name="q"
-                type="search"
-                value="{{ $search }}"
-                placeholder="Search recipes..."
-                class="w-64 rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm transition focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none"
-            />
-            <button type="submit" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-primary-700">
-                Search
-            </button>
-        </form>
+        <div class="flex flex-wrap items-center gap-2">
+            <form class="flex gap-2" method="GET" action="{{ route('recipes.index') }}">
+                <input
+                    name="q"
+                    type="search"
+                    value="{{ $search }}"
+                    placeholder="Search recipes..."
+                    class="w-64 rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm transition focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none"
+                />
+                <button type="submit" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-primary-700">
+                    Search
+                </button>
+            </form>
+
+            @if(session('api_token'))
+                <a href="{{ route('recipes.create') }}" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-primary-700">
+                    + Create
+                </a>
+                <a href="{{ route('recipes.import') }}" class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50">
+                    Import JSON
+                </a>
+            @endif
+        </div>
     </div>
 
     @if(empty($recipes))
