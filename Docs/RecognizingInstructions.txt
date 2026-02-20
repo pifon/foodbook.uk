@@ -1,0 +1,115 @@
+Recognizing instructions:
+
+1 of 6 patterns:
+---------------------------------
+
+1. | Direct Action                    | [ACTION] 		  {INGREDIENT}      	      	              	| Season the chicken. Chop the onions. Whisk the eggs.
+2. | Action + Quantity                | [ACTION] (AMOUNT) {INGREDIENT}   	  							| Add 2 tablespoons of oil. Pour half of the sauce.  Stir in 1 cup of milk.
+3. | Action + Tool / Location         | [ACTION] 		  {INGREDIENT}   in/into 	{CONTAINER/TOOL} 	| Mix the ingredients in a bowl. Place the chicken on a tray. Transfer to a baking dish.
+4. | Action + Duration                | [ACTION] 		  {INGREDIENT} 	 for     	(TIME)           	| Simmer for 10 minutes. Bake for 25 minutes. Let rest for 5 minutes
+5. | Action + Condition (Very Common) | [ACTION] 		  {INGREDIENT} 	 until    	<STATE>         	| Cook until tender. Fry until golden brown. Beat until smooth.
+6. | Sequential Compound Action       | [ACTION1], 		       			 then 		[ACTION2] ...	    | Mix the marinade and coat the chicken. Heat the oil, then add the onions. Remove from heat and let cool.
+
+For a cooking DSL:
+	STEP :=
+	  ACTION
+	  + QUANTITY?
+	  + TARGET?
+	  + TOOL?
+	  + LOCATION?
+	  + TEMPERATURE?
+	  + DURATION?
+	  + CONDITION?
+	  + RESULT?
+
+OR:
+
+	STEP {
+	  action: verb
+	  targets: ingredient[]
+	  quantity: measurement?
+	  tool: equipment?
+	  location: place?
+	  temperature: temp?
+	  duration: time?
+	  condition: state?
+	  result: outcome?
+	}
+OR:
+	[ACTION]
+	  (QUANTITY)
+	  {INGREDIENT or MIXTURE}
+	  [IN/ON/TO TOOL]
+	  [AT TEMPERATURE]
+	  [FOR TIME]
+	  [UNTIL CONDITION]
+	  [RESULTING IN OUTCOME]
+
+If you want to extract structured data from recipes, your parser should look for:
+	- Imperative verbs (root of sentence)
+	- Direct objects (ingredients)
+	- Numeric phrases (quantities)
+	- Prepositional phrases (tools/locations)
+	- Temporal phrases (for 10 minutes)
+	- “until” clauses (state transitions)
+
+Action OBJECT:
+
+{
+  "type": "mix | chop | bake | fry | season | add | whisk | ...",
+
+  "targets": [
+    {
+      "ingredient_id": "chicken",
+      "name": "chicken",
+      "quantity": {
+        "amount": 1,
+        "unit": "kg"
+      },
+      "state": "raw | chopped | diced | beaten | dry | etc"
+    }
+  ],
+
+  "tool": {
+    "name": "bowl",
+    "size": "large"
+  },
+
+  "heat": {
+    "temperature": {
+      "value": 180,
+      "unit": "C"
+    },
+    "level": "medium | high | low"
+  },
+
+  "duration": {
+    "value": 25,
+    "unit": "minutes"
+  },
+
+  "condition": {
+    "type": "until",
+    "value": "golden brown"
+  },
+
+  "location": "oven | stovetop | fridge | grill",
+
+  "modifiers": {
+    "intensity": "gently | thoroughly | lightly",
+    "amount_fraction": 0.5
+  },
+
+  "result": {
+    "produces": "marinade",
+    "new_state": "cooked"
+  }
+}
+
+
+Dependencies: "depends_on":     ["step-2"]
+Ingredient References: 			{
+								  "ingredient_id": "chicken_thighs",
+								  "source_step": 2
+								}
+Parallel Actions: 				"parallel": true

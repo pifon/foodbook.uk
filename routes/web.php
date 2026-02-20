@@ -32,8 +32,10 @@ Route::middleware('auth.api')->group(function () {
     Route::post('/recipes', [RecipeController::class, 'store'])->name('recipes.store');
     Route::get('/recipes/import', [RecipeController::class, 'import'])->name('recipes.import');
     Route::post('/recipes/import', [RecipeController::class, 'importStore'])->name('recipes.import.store');
-    Route::post('/recipes/parse-direction',
-        [RecipeController::class, 'parseDirection'])->name('recipes.parse-direction');
+    Route::post(
+        '/recipes/parse-direction',
+        [RecipeController::class, 'parseDirection']
+    )->name('recipes.parse-direction');
     Route::get('/recipes/{slug}/edit', [RecipeController::class, 'edit'])->name('recipes.edit');
     Route::patch('/recipes/{slug}', [RecipeController::class, 'update'])->name('recipes.update');
 
