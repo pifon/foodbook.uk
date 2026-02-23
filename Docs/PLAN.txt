@@ -1,0 +1,4 @@
+Work on DirectionParser so it makes good read
+
+docker compose exec client php artisan tinker
+app(App\Services\DirectionParser::class)->parse("Add 5g of salt");`

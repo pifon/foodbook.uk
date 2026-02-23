@@ -1,3 +1,0 @@
-nvm use 22
-Now using node v22.22.0 (npm v11.7.0)
-npm run dev

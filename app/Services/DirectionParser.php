@@ -59,6 +59,10 @@ class DirectionParser
         'tablespoons?', 'tbsp', 'teaspoons?', 'tsp',
     ];
 
+    private const COMPOUNDS = [
+        'then', 'and', 'next', 'after that', 'alternatively'
+    ];
+
     private array $actionSet;
 
     public function __construct()
@@ -87,8 +91,20 @@ class DirectionParser
 
     // ------------------------------------------------------------------
     // Compound splitting (pattern 6)
+    //
+    // Sequential Compound Action
+    // ------------------------------------------------------------------
+    // | [ACTION1], then [ACTION2] ...
+    // | Mix the marinade and coat the chicken.
+    // | Heat the oil, then add the onions.
+    // | Remove from heat and let cool.
     // ------------------------------------------------------------------
 
+    /**
+     * compounds: then, next, after that, and, alternatively
+     * @param string $sentence
+     * @return string[]
+     */
     private function splitCompound(string $sentence): array
     {
         $parts = preg_split('/[,;.]\s*then\s+/i', $sentence);
@@ -163,7 +179,7 @@ class DirectionParser
 
     private function extractAction(string $text): array
     {
-        $words = preg_split('/\s+/', preg_replace('/[,.\(\)]/', ' ', $text));
+        $words = preg_split('/\s+/', preg_replace('/[,.()]/', ' ', $text));
         $isConditional = (bool) preg_match('/^\s*(when|after|once|before|if|as\s+soon\s+as)\b/i', $text);
         $skippedFirst = false;
 
@@ -262,6 +278,7 @@ class DirectionParser
     // ------------------------------------------------------------------
     // Condition: "until golden brown", leading "when X,"
     // ------------------------------------------------------------------
+    // WRONG: until [target] (is) golden brown
 
     private function extractCondition(string $text): array
     {
@@ -369,6 +386,7 @@ class DirectionParser
 
     private function extractTargets(string $text): array
     {
+        // wrong - those may predict targets!
         $text = preg_replace('/^\s*(the|a|an|your|some|it)\s+/i', '', trim($text));
         $text = preg_replace('/\s+(the|a|an)\s+/i', ' ', $text);
         $text = $this->normalizeSpaces($text);

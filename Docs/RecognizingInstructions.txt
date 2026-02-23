@@ -1,5 +1,10 @@
 Recognizing instructions:
 
+`docker compose exec client php artisan tinker
+app(App\Services\DirectionParser::class)->parse("Add salt");`
+
+app(App\Services\DirectionParser::class)->parse("Cook on a high heat for 20-25 minutes or until pasta is soft, then immediately drain and set aside to let it cool.");
+
 1 of 6 patterns:
 ---------------------------------
 
