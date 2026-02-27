@@ -8,18 +8,84 @@
         <p class="mt-1 text-gray-600">Manage your account and preferences.</p>
     </div>
 
+    @if(config('app.debug') && ($user === [] || !isset($user['username'])))
+        <section class="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm">
+            <p class="font-medium text-amber-800">Debug: user data is empty or missing username.</p>
+            <p class="mt-1 text-amber-700">Check storage/logs/laravel.log for "Settings: /v1/me" to see the API response.</p>
+            @if($user !== [])
+                <p class="mt-2 text-amber-700">Keys in $user: {{ implode(', ', array_keys($user)) }}</p>
+            @endif
+        </section>
+    @endif
+
     <section class="rounded-xl border border-gray-200 bg-white p-6">
         <h2 class="mb-4 text-lg font-semibold text-gray-900">Profile</h2>
         <dl class="space-y-3 text-sm">
             <div class="flex gap-3">
-                <dt class="w-28 shrink-0 font-medium text-gray-500">Username</dt>
-                <dd class="text-gray-900">{{ $user['username'] ?? '' }}</dd>
+                <dt class="w-32 shrink-0 font-medium text-gray-500">Username</dt>
+                <dd class="text-gray-900">{{ $user['username'] ?? '—' }}</dd>
             </div>
             <div class="flex gap-3">
-                <dt class="w-28 shrink-0 font-medium text-gray-500">Email</dt>
-                <dd class="text-gray-900">{{ $user['email'] ?? '' }}</dd>
+                <dt class="w-32 shrink-0 font-medium text-gray-500">Email</dt>
+                <dd class="text-gray-900">{{ $user['email'] ?? '—' }}</dd>
+            </div>
+            <div class="flex gap-3">
+                <dt class="w-32 shrink-0 font-medium text-gray-500">Full name</dt>
+                <dd class="text-gray-900">{{ $user['name'] ?? '—' }}</dd>
+            </div>
+            <div class="flex gap-3">
+                <dt class="w-32 shrink-0 font-medium text-gray-500">Joined</dt>
+                <dd class="text-gray-900">
+                    @php
+                        $created = $user['created-at'] ?? $user['created_at'] ?? null;
+                    @endphp
+                    {{ $created ? \Illuminate\Support\Carbon::parse($created)->format('F j, Y') : '—' }}
+                </dd>
+            </div>
+            <div class="flex gap-3">
+                <dt class="w-32 shrink-0 font-medium text-gray-500">Tier</dt>
+                <dd class="text-gray-900">
+                    @if(!empty($user['author']) && isset($user['author']['tier']))
+                        {{ ucfirst($user['author']['tier'] ?? '—') }}
+                    @else
+                        {{ ucfirst($user['tier'] ?? '—') }}
+                    @endif
+                </dd>
+            </div>
+            <div class="flex gap-3">
+                <dt class="w-32 shrink-0 font-medium text-gray-500">Author</dt>
+                <dd class="text-gray-900">{{ !empty($user['author']) ? 'Yes' : 'No' }}</dd>
             </div>
         </dl>
+
+        @if(!empty($user['author']) && is_array($user['author']))
+            <div class="mt-6 border-t border-gray-200 pt-6">
+                <h3 class="mb-3 text-base font-semibold text-gray-900">Author profile</h3>
+                <dl class="space-y-3 text-sm">
+                    <div class="flex gap-3">
+                        <dt class="w-32 shrink-0 font-medium text-gray-500">Name</dt>
+                        <dd class="text-gray-900">{{ $user['author']['name'] ?? '—' }}</dd>
+                    </div>
+                    <div class="flex gap-3">
+                        <dt class="w-32 shrink-0 font-medium text-gray-500">Username</dt>
+                        <dd class="text-gray-900">{{ $user['author']['username'] ?? $user['author']['id'] ?? '—' }}</dd>
+                    </div>
+                    <div class="flex gap-3">
+                        <dt class="w-32 shrink-0 font-medium text-gray-500">Tier</dt>
+                        <dd class="text-gray-900">{{ ucfirst($user['author']['tier'] ?? '—') }}</dd>
+                    </div>
+                    <div class="flex gap-3">
+                        <dt class="w-32 shrink-0 font-medium text-gray-500">Author since</dt>
+                        <dd class="text-gray-900">
+                            @php
+                                $authorCreated = $user['author']['created-at'] ?? $user['author']['created_at'] ?? null;
+                            @endphp
+                            {{ $authorCreated ? \Illuminate\Support\Carbon::parse($authorCreated)->format('F j, Y') : '—' }}
+                        </dd>
+                    </div>
+                </dl>
+            </div>
+        @endif
     </section>
 
     <section class="rounded-xl border border-gray-200 bg-white p-6">

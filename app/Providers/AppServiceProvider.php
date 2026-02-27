@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Services\ApiClient;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -19,6 +20,8 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        //
+        View::composer('layouts.app', function ($view) {
+            $view->with('api_log', request()->attributes->get('api_log', []));
+        });
     }
 }

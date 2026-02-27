@@ -3,6 +3,11 @@
 
 @section('content')
 <div class="space-y-6">
+    @if(session('error'))
+        <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            {{ session('error') }}
+        </div>
+    @endif
     <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 class="text-2xl font-bold text-gray-900">Recipes</h1>
 
@@ -21,12 +26,14 @@
             </form>
 
             @if(session('api_token'))
-                <a href="{{ route('recipes.create') }}" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-primary-700">
-                    + Create
-                </a>
-                <a href="{{ route('recipes.import') }}" class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50">
-                    Import JSON
-                </a>
+                @if(session('user')['author'] ?? false)
+                    <a href="{{ route('recipes.create') }}" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-primary-700">
+                        + Create
+                    </a>
+                    <a href="{{ route('recipes.import') }}" class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50">
+                        Import JSON
+                    </a>
+                @endif
             @endif
         </div>
     </div>

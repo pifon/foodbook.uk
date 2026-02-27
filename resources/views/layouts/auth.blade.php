@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Foodbook')</title>
-    @vite(['resources/css/app.css', 'resources/js/app.ts'])
+    @include('components.build-assets')
 </head>
 <body class="min-h-screen bg-gray-50 text-gray-900 antialiased">
     <div class="flex min-h-screen items-center justify-center px-4">

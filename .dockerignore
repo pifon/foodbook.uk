@@ -1,6 +1,3 @@
-node_modules
-vendor
-public/build
 storage/logs/*
 storage/framework/cache/*
 storage/framework/sessions/*

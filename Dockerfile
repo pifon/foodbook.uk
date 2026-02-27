@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     cron \
     curl \
     nginx \
+    openssl \
     supervisor \
     unzip \
     && docker-php-ext-install opcache \
@@ -19,26 +20,25 @@ RUN rm -f /etc/nginx/sites-enabled/default \
 WORKDIR /var/www/html
 
 # --- Dependencies ---
+# Run on host first: composer install --no-dev --no-scripts --no-autoloader && npm ci && npm run build
 FROM base AS deps
 
 COPY composer.json composer.lock* ./
-RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist
+COPY vendor ./vendor
 
 COPY package.json package-lock.json* ./
-RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
-    && apt-get install -y nodejs \
-    && npm ci
+COPY node_modules ./node_modules
 
-# --- Build frontend ---
+# --- Frontend (pre-built on host) ---
 FROM deps AS frontend
 
 COPY . .
-RUN npm run build
+# public/build comes from host (npm run build); no network in container
 
 # --- Final image ---
 FROM base
 
-COPY docker/nginx/default.conf /etc/nginx/conf.d/default.conf
+COPY docker/nginx/default.conf.template /etc/nginx/conf.d/default.conf.template
 COPY docker/certbot-renew.sh /usr/local/bin/certbot-renew.sh
 COPY docker/certbot-cron /etc/cron.d/certbot-cron
 COPY docker/supervisord.conf /etc/supervisord.conf
@@ -51,6 +51,8 @@ RUN chmod +x /usr/local/bin/certbot-renew.sh \
 COPY --from=deps /var/www/html/vendor ./vendor
 COPY . .
 COPY --from=frontend /var/www/html/public/build ./public/build
+# Keep a copy for when host mount overrides public/build and has no build (entrypoint restores it)
+COPY --from=frontend /var/www/html/public/build /opt/foodbook-build
 
 RUN composer dump-autoload --optimize \
     && chown -R www-data:www-data storage bootstrap/cache \
@@ -59,7 +61,7 @@ RUN composer dump-autoload --optimize \
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
-EXPOSE 80
+EXPOSE 80 443
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]

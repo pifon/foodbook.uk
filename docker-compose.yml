@@ -6,19 +6,30 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    # Bind to 127.0.0.3 only (ensure "127.0.0.3 foodbook" in /etc/hosts). API uses 127.0.0.2.
     ports:
-      - "8080:80"
+      - "127.0.0.3:80:80"
+      - "127.0.0.3:443:443"
     volumes:
       - .:/var/www/html
       - /var/www/html/vendor
       - /var/www/html/node_modules
-      - /var/www/html/public/build
-      - /etc/letsencrypt:/etc/letsencrypt
+      - letsencrypt_foodbook:/etc/letsencrypt
     env_file:
       - .env
+    # So that API_BASE_URL=https://pifon/api reaches the real API: resolve "pifon" to the API container on api_laravel-network.
+    extra_hosts:
+      - "pifon:172.18.0.3"
     networks:
       - client_laravel-network
+      - api_network
 
 networks:
   client_laravel-network:
     driver: bridge
+  api_network:
+    name: api_laravel-network
+    external: true
+
+volumes:
+  letsencrypt_foodbook:

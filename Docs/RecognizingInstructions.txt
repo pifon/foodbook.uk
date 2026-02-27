@@ -1,5 +1,7 @@
 Recognizing instructions:
 
+docker compose exec client php artisan parse-direction "Add 5g of salt"
+
 `docker compose exec client php artisan tinker
 app(App\Services\DirectionParser::class)->parse("Add salt");`
 
@@ -118,3 +120,9 @@ Ingredient References: 			{
 								  "source_step": 2
 								}
 Parallel Actions: 				"parallel": true
+
+
+observations:
+- "until" is a special case of "condition"
+- "each" implies that will be followed by list of items,
+    separated by comas and last one will be preceded by ", and"

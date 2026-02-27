@@ -93,16 +93,18 @@
                                     {{ $idx + 1 }}
                                 </span>
                                 <div>
-                                    <p class="text-gray-900">
-                                        @if(!empty($direction['operation']))
-                                            <span class="font-medium">{{ $direction['operation']['name'] ?? $direction['operation'] }}</span>
-                                        @endif
-                                        @if(!empty($direction['product']))
-                                            {{ $direction['product']['name'] ?? $direction['product'] }}
-                                        @endif
-                                    </p>
+                                    {{-- Prefer instruction (full step text including all ingredients); notes is set from instruction in normalizePreparationForView --}}
                                     @if(!empty($direction['notes']))
-                                        <p class="mt-0.5 text-gray-500">{{ $direction['notes'] }}</p>
+                                        <p class="text-gray-900">{{ $direction['notes'] }}</p>
+                                    @else
+                                        <p class="text-gray-900">
+                                            @if(!empty($direction['operation']))
+                                                <span class="font-medium">{{ $direction['operation']['name'] ?? $direction['operation'] }}</span>
+                                            @endif
+                                            @if(!empty($direction['product']))
+                                                {{ $direction['product']['name'] ?? $direction['product'] }}
+                                            @endif
+                                        </p>
                                     @endif
                                     @if(!empty($direction['duration']))
                                         <p class="mt-0.5 text-xs text-gray-400">{{ $direction['duration'] }} min</p>

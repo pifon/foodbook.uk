@@ -23,28 +23,38 @@ class RegisterController extends Controller
             'password' => 'required|string|min:8|confirmed',
         ]);
 
-        $response = $this->api->post('/register', [
-            'data' => [
-                'type' => 'users',
-                'attributes' => [
-                    'name' => $request->input('name'),
-                    'username' => $request->input('username'),
-                    'email' => $request->input('email'),
-                    'password' => $request->input('password'),
+        try {
+            $response = $this->api->postJsonApi('register', [
+                'data' => [
+                    'type' => 'users',
+                    'attributes' => [
+                        'name' => $request->input('name'),
+                        'username' => $request->input('username'),
+                        'email' => $request->input('email'),
+                        'password' => $request->input('password'),
+                    ],
                 ],
-            ],
-        ]);
+            ]);
+        } catch (\Throwable $e) {
+            return back()
+                ->withInput($request->only('name', 'username', 'email'))
+                ->withErrors(['general' => 'Could not reach the registration service. Please try again.']);
+        }
 
         if ($response->failed()) {
             $errors = [];
-            foreach ($response->json('errors', []) as $err) {
-                $field = last(explode('/', $err['source']['pointer'] ?? 'general'));
-                $errors[$field] = $err['detail'] ?? 'Validation error';
+            $apiErrors = $response->json('errors', []);
+            foreach ($apiErrors as $err) {
+                $pointer = $err['source']['pointer'] ?? '';
+                $field = $pointer !== '' ? last(explode('/', trim($pointer, '/'))) : 'general';
+                $detail = $err['detail'] ?? $err['title'] ?? 'Validation error';
+                $errors[$field] = $detail;
             }
+            $errors['general'] = $this->apiErrorMessage($response);
 
             return back()
                 ->withInput($request->only('name', 'username', 'email'))
-                ->withErrors($errors ?: ['general' => 'Registration failed.']);
+                ->withErrors($errors);
         }
 
         $loginResponse = $this->api->post('/login', [
