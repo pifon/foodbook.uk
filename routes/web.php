@@ -41,10 +41,14 @@ Route::middleware(['auth.api', 'user.in.session'])->group(function () {
     )->name('recipes.parse-direction');
     Route::get('/recipes/{slug}/edit', [RecipeController::class, 'edit'])->name('recipes.edit');
     Route::patch('/recipes/{slug}', [RecipeController::class, 'update'])->name('recipes.update');
-    Route::get('/recipes/{slug}/preparation', [RecipeController::class, 'getPreparationJson'])->name('recipes.preparation.show');
-    Route::post('/recipes/{slug}/preparation', [RecipeController::class, 'savePreparationAjax'])->name('recipes.preparation.store');
-    Route::delete('/recipes/{slug}/directions/{id}', [RecipeController::class, 'deleteDirection'])->name('recipes.directions.delete');
-    Route::post('/recipes/{slug}/directions/from-text', [RecipeController::class, 'addDirectionFromText'])->name('recipes.directions.from-text');
+    Route::get('/recipes/{slug}/preparation', [RecipeController::class, 'getPreparationJson'])
+        ->name('recipes.preparation.show');
+    Route::post('/recipes/{slug}/preparation', [RecipeController::class, 'savePreparationAjax'])
+        ->name('recipes.preparation.store');
+    Route::delete('/recipes/{slug}/directions/{id}', [RecipeController::class, 'deleteDirection'])
+        ->name('recipes.directions.delete');
+    Route::post('/recipes/{slug}/directions/from-text', [RecipeController::class, 'addDirectionFromText'])
+        ->name('recipes.directions.from-text');
     Route::post('/recipes/product-create', [ProductController::class, 'store'])->name('products.store');
 
     Route::get('/collections', [CollectionController::class, 'index'])->name('collections.index');
@@ -65,9 +69,18 @@ Route::get('/recipes/{slug}', [RecipeController::class, 'show'])->name('recipes.
 
 // api (internal): when outbound requests to the API (API_BASE_URL) loop back to this app, forward to the API.
 $apiProxy = function (Request $request, string $path, string $contentType) {
-    $base = rtrim(config('services.api.internal_base_url') ?: config('services.api.base_url'), '/') ?: null;
+    $base = rtrim(
+        config('services.api.internal_base_url') ?: config('services.api.base_url'),
+        '/',
+    ) ?: null;
     if (! $base) {
-        return response()->json(['errors' => [['title' => 'api proxy not configured', 'detail' => 'Set API_INTERNAL_BASE_URL (e.g. https://172.18.0.3/api) so /api/* forwards to the API.']]], 502);
+        return response()->json([
+            'errors' => [[
+                'title' => 'api proxy not configured',
+                'detail' => 'Set API_INTERNAL_BASE_URL (e.g. https://172.18.0.3/api) '
+                    . 'so /api/* forwards to the API.',
+            ]],
+        ], 502);
     }
     $url = $base . '/' . ltrim($path, '/');
     $response = Http::withHeaders(['Content-Type' => $contentType, 'Accept' => $contentType])
@@ -80,9 +93,17 @@ $apiProxy = function (Request $request, string $path, string $contentType) {
 
 // api (internal): forward /api/v1/* to the API when outbound requests loop back to this app.
 $apiV1Proxy = function (Request $request, ?string $path = '') {
-    $base = rtrim(config('services.api.internal_base_url') ?: config('services.api.base_url'), '/') ?: null;
+    $base = rtrim(
+        config('services.api.internal_base_url') ?: config('services.api.base_url'),
+        '/',
+    ) ?: null;
     if (! $base) {
-        return response()->json(['errors' => [['title' => 'api proxy not configured', 'detail' => 'Set API_INTERNAL_BASE_URL.']]], 502);
+        return response()->json([
+            'errors' => [[
+                'title' => 'api proxy not configured',
+                'detail' => 'Set API_INTERNAL_BASE_URL.',
+            ]],
+        ], 502);
     }
     $path = trim($path ?? '', '/');
     $url = rtrim($base . '/v1/' . $path, '/');
@@ -90,7 +111,8 @@ $apiV1Proxy = function (Request $request, ?string $path = '') {
     if ($queryString !== null && $queryString !== '') {
         $url .= '?' . $queryString;
     }
-    $contentType = $request->header('Content-Type') ?: 'application/vnd.api+json';
+    $contentType = $request->header('Content-Type')
+        ?: 'application/vnd.api+json';
     $pending = Http::withHeaders([
         'Accept' => $request->header('Accept') ?: 'application/vnd.api+json',
         'Content-Type' => $contentType,

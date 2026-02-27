@@ -17,16 +17,19 @@ class SettingsController extends Controller
             $json = $meResponse->json();
             if (is_array($json)) {
                 $user = $this->flattenSingle($json);
-                if ($user === [] || ($user !== [] && ! array_key_exists('username', $user))) {
+                if ($user === [] || ! array_key_exists('username', $user)) {
                     $user = $this->normalizeUserFromApiResponse($json);
                 }
                 if ($user !== []) {
                     session()->put('user', $user);
                 } else {
+                    $dataKeys = isset($json['data']) && is_array($json['data'])
+                        ? array_keys($json['data'])
+                        : null;
                     Log::warning('Settings: /v1/me returned 200 but user could not be extracted', [
                         'response_keys' => array_keys($json),
                         'has_data' => isset($json['data']),
-                        'data_keys' => isset($json['data']) && is_array($json['data']) ? array_keys($json['data']) : null,
+                        'data_keys' => $dataKeys,
                     ]);
                 }
             } else {
@@ -40,7 +43,7 @@ class SettingsController extends Controller
                 'body_preview' => substr($meResponse->body(), 0, 200),
             ]);
         }
-        if ($user === [] || ! is_array($user)) {
+        if ($user === []) {
             $user = session('user') ?? [];
         }
         if (! is_array($user)) {

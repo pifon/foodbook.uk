@@ -34,7 +34,8 @@ class LoginController extends Controller
 
         if ($response->failed()) {
             $effectiveUri = $response->effectiveUri();
-            $urlUsed = $effectiveUri !== null ? (string) $effectiveUri : (rtrim(config('services.api.base_url'), '/') . '/login');
+            $base = rtrim(config('services.api.base_url'), '/') . '/login';
+            $urlUsed = $effectiveUri !== null ? (string) $effectiveUri : $base;
             $body = $response->body();
             $message = sprintf(
                 'Sent POST to %s. Response: HTTP %d. %s',
@@ -51,7 +52,11 @@ class LoginController extends Controller
         if (empty($token)) {
             return back()
                 ->withInput($request->only('username'))
-                ->withErrors(['login' => 'API did not return an access token. Check API login response shape (meta.access_token or access_token).']);
+                ->withErrors([
+                    'login' => 'API did not return an access token. '
+                        . 'Check API login response shape '
+                        . '(meta.access_token or access_token).',
+                ]);
         }
 
         try {

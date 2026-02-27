@@ -336,7 +336,7 @@ class RecipeController extends Controller
                     $allRawItems[] = $item;
                 }
             }
-            if ($pageNumber === 1 && count($allRawItems) === 0 && ! $triedNoParams) {
+            if ($pageNumber === 1 && count($allRawItems) === 0) {
                 $triedNoParams = true;
                 $response = $this->api->get('/v1/cuisines', [], $this->token());
                 if ($response->successful()) {
@@ -366,7 +366,8 @@ class RecipeController extends Controller
     }
 
     /**
-     * Try to parse cuisine list from response when it's not standard JSON:API (e.g. data[] with slug in attributes, or root key "cuisines").
+     * Try to parse cuisine list from response when it's not standard JSON:API
+     * (e.g. data[] with slug in attributes, or root key "cuisines").
      */
     private function extractCuisinesFromAnyShape(array $json): array
     {
@@ -387,7 +388,8 @@ class RecipeController extends Controller
             }
             $attrs = $r['attributes'] ?? $r;
             $id = $r['id'] ?? $attrs['id'] ?? $attrs['slug'] ?? $r['slug'] ?? null;
-            $name = $attrs['name'] ?? $attrs['title'] ?? $attrs['label'] ?? $r['name'] ?? $r['title'] ?? $r['label'] ?? (string) $id;
+            $name = $attrs['name'] ?? $attrs['title'] ?? $attrs['label']
+                ?? $r['name'] ?? $r['title'] ?? $r['label'] ?? (string) $id;
             if ($id !== null && $id !== '') {
                 $out[] = ['id' => $id, 'slug' => $id, 'name' => $name];
             }
@@ -396,7 +398,8 @@ class RecipeController extends Controller
     }
 
     /**
-     * Build [ slug => label ] from a list of cuisine items (from flatten or raw attributes). One entry per unique label.
+     * Build [ slug => label ] from a list of cuisine items (from flatten or
+     * raw attributes). One entry per unique label.
      */
     private function normalizeCuisinesList(array $items): array
     {
@@ -431,7 +434,8 @@ class RecipeController extends Controller
     }
 
     /**
-     * Build JSON:API payload to match API spec: attributes (title, description, prep-time-minutes, cook-time-minutes, difficulty, serves),
+     * Build JSON:API payload to match API spec: attributes (title,
+     * description, prep-time-minutes, cook-time-minutes, difficulty, serves),
      * relationships.cuisine.data with type + slug.
      */
     private function recipePayload(Request $request): array
@@ -470,16 +474,23 @@ class RecipeController extends Controller
         $attrs = [
             'title' => $request->input('title'),
             'description' => $request->input('description'),
-            'prep-time-minutes' => $request->filled('prep_time_minutes') ? (int) $request->input('prep_time_minutes') : null,
-            'cook-time-minutes' => $request->filled('cook_time_minutes') ? (int) $request->input('cook_time_minutes') : null,
+            'prep-time-minutes' => $request->filled('prep_time_minutes')
+                ? (int) $request->input('prep_time_minutes')
+                : null,
+            'cook-time-minutes' => $request->filled('cook_time_minutes')
+                ? (int) $request->input('cook_time_minutes')
+                : null,
             'difficulty' => $request->input('difficulty'),
-            'serves' => $request->filled('serves') ? (int) $request->input('serves') : null,
+            'serves' => $request->filled('serves')
+                ? (int) $request->input('serves')
+                : null,
         ];
         return array_filter($attrs, fn ($v) => $v !== null && $v !== '');
     }
 
     /**
-     * Return current preparation (directions + ingredients) as JSON. Used to refresh ingredients after add/remove direction.
+     * Return current preparation (directions + ingredients) as JSON.
+     * Used to refresh ingredients after add/remove direction.
      */
     public function getPreparationJson(string $slug): JsonResponse
     {
@@ -646,10 +657,16 @@ class RecipeController extends Controller
             if ($stepText === '' && is_array($d)) {
                 $parts = [];
                 if (! empty($d['operation'])) {
-                    $parts[] = is_array($d['operation']) ? ($d['operation']['name'] ?? $d['operation']['title'] ?? '') : (string) $d['operation'];
+                    $op = $d['operation'];
+                    $parts[] = is_array($op)
+                        ? ($op['name'] ?? $op['title'] ?? '')
+                        : (string) $op;
                 }
                 if (! empty($d['product'])) {
-                    $parts[] = is_array($d['product']) ? ($d['product']['name'] ?? $d['product']['slug'] ?? '') : (string) $d['product'];
+                    $prod = $d['product'];
+                    $parts[] = is_array($prod)
+                        ? ($prod['name'] ?? $prod['slug'] ?? '')
+                        : (string) $prod;
                 }
                 $stepText = implode(' ', array_filter($parts));
             }
@@ -695,8 +712,10 @@ class RecipeController extends Controller
     /**
      * Convert a preparation attribute (product, measure) to a string for the form.
      */
-    private function preparationValueToString(mixed $value, array $objectKeys = ['abbreviation', 'name', 'slug']): string
-    {
+    private function preparationValueToString(
+        mixed $value,
+        array $objectKeys = ['abbreviation', 'name', 'slug'],
+    ): string {
         if (is_string($value)) {
             return $value;
         }
@@ -780,7 +799,11 @@ class RecipeController extends Controller
         }
         $body = strtolower($response->body());
 
-        return str_contains($body, 'method') && (str_contains($body, 'not supported') || str_contains($body, 'supported methods'));
+        return str_contains($body, 'method')
+            && (
+                str_contains($body, 'not supported')
+                || str_contains($body, 'supported methods')
+            );
     }
 
     private function extractApiError(Response $response): string
