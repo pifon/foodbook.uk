@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\Auth\LoginController;
-use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\CollectionController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HomeController;
@@ -22,8 +21,9 @@ Route::middleware('guest.api')->group(function () {
     Route::get('/login', [LoginController::class, 'show'])->name('login');
     Route::post('/login', [LoginController::class, 'store']);
 
-    Route::get('/register', [RegisterController::class, 'show'])->name('register');
-    Route::post('/register', [RegisterController::class, 'store']);
+    // Registration disabled for now — redirect to login
+    Route::get('/register', fn () => redirect()->route('login'))->name('register');
+    Route::post('/register', fn () => redirect()->route('login'));
 });
 
 Route::middleware(['auth.api', 'user.in.session'])->group(function () {

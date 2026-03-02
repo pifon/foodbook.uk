@@ -27,13 +27,29 @@ fi
 APP_DOMAIN=$(echo "$_url" | sed -e 's|https\?://||' -e 's|/.*||' -e 's|:.*||')
 [ -z "$APP_DOMAIN" ] && APP_DOMAIN=foodbook
 
-# Generate self-signed certificate if it doesn't exist
+# Obtain or create certificates
 CERT_DIR="/etc/letsencrypt/live/$APP_DOMAIN"
 if [ ! -f "$CERT_DIR/fullchain.pem" ] || [ ! -f "$CERT_DIR/privkey.pem" ]; then
-    mkdir -p "$CERT_DIR"
-    openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-        -keyout "$CERT_DIR/privkey.pem" -out "$CERT_DIR/fullchain.pem" \
-        -subj "/CN=$APP_DOMAIN" -addext "subjectAltName=DNS:$APP_DOMAIN,DNS:localhost,DNS:127.0.0.1" 2>/dev/null || true
+    if [ -n "$LETSENCRYPT_EMAIL" ] && [ "$APP_DOMAIN" != "localhost" ] && [ "$APP_DOMAIN" != "foodbook" ]; then
+        # Obtain Let's Encrypt certificate (requires port 80 and DNS for APP_DOMAIN pointing here)
+        echo "Obtaining Let's Encrypt certificate for $APP_DOMAIN ..."
+        if certbot certonly --standalone -d "$APP_DOMAIN" \
+            --email "$LETSENCRYPT_EMAIL" --agree-tos --non-interactive --no-self-upgrade 2>/dev/null; then
+            echo "Let's Encrypt certificate obtained."
+        else
+            echo "Let's Encrypt failed; falling back to self-signed certificate."
+            mkdir -p "$CERT_DIR"
+            openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+                -keyout "$CERT_DIR/privkey.pem" -out "$CERT_DIR/fullchain.pem" \
+                -subj "/CN=$APP_DOMAIN" -addext "subjectAltName=DNS:$APP_DOMAIN,DNS:localhost,DNS:127.0.0.1" 2>/dev/null || true
+        fi
+    else
+        # Local/dev: self-signed certificate
+        mkdir -p "$CERT_DIR"
+        openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+            -keyout "$CERT_DIR/privkey.pem" -out "$CERT_DIR/fullchain.pem" \
+            -subj "/CN=$APP_DOMAIN" -addext "subjectAltName=DNS:$APP_DOMAIN,DNS:localhost,DNS:127.0.0.1" 2>/dev/null || true
+    fi
 fi
 
 # Generate nginx config from template. Prefer mounted project template so edits apply without rebuild.

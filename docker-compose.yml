@@ -1,10 +1,9 @@
-# Ports: leave unset for live (https://foodbook.uk) → 80, 443.
-# Local with reverse-proxy: set FOODBOOK_BIND=127.0.0.1, FOODBOOK_HTTP_PORT=8081, FOODBOOK_HTTPS_PORT=8444 in .env (API uses 8080/8443)
-# so the proxy can bind 80/443; access via https://foodbook (proxy forwards to container).
+# Ports: production (.env.foodbook.uk) → 80, 443. Local (.env.foodbook) → 8081, 8444.
+# Run: ./up foodbook (local) or ./up foodbook.uk (production). This sets .env and starts the stack.
 services:
-  client:
-    image: client
-    container_name: client
+  foodbook:
+    image: foodbook
+    container_name: foodbook
     restart: unless-stopped
     build:
       context: .

@@ -36,11 +36,8 @@
                     </button>
                 </form>
             @else
-                <a href="{{ route('login') }}" class="rounded-lg px-3 py-1.5 text-sm font-medium text-gray-600 transition hover:bg-gray-100">
+                <a href="{{ route('login') }}" class="rounded-lg bg-primary-600 px-4 py-1.5 text-sm font-medium text-white transition hover:bg-primary-700">
                     Log in
-                </a>
-                <a href="{{ route('register') }}" class="rounded-lg bg-primary-600 px-4 py-1.5 text-sm font-medium text-white transition hover:bg-primary-700">
-                    Sign up
                 </a>
             @endif
         </div>

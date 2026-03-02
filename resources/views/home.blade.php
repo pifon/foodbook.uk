@@ -16,8 +16,8 @@
                 Browse Recipes
             </a>
             @unless($authenticated)
-                <a href="{{ route('register') }}" class="rounded-lg border border-gray-300 bg-white px-6 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50">
-                    Create Account
+                <a href="{{ route('login') }}" class="rounded-lg border border-gray-300 bg-white px-6 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50">
+                    Log in
                 </a>
             @endunless
         </div>

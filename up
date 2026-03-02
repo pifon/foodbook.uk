@@ -1,0 +1,27 @@
+#!/usr/bin/env sh
+# Usage: ./up foodbook        → local (ports 8081/8444, APP_URL=https://foodbook)
+#        ./up foodbook.uk     → production (ports 80/443, APP_URL=https://foodbook.uk)
+# Copies the right .env preset to .env and runs docker compose up foodbook --build -d.
+
+set -e
+
+case "$1" in
+  foodbook|foodbook.uk)
+    ;;
+  *)
+    echo "Usage: $0 foodbook|foodbook.uk"
+    echo "  foodbook    – local (FOODBOOK_BIND=127.0.0.1, ports 8081/8444)"
+    echo "  foodbook.uk – production (ports 80/443, Let's Encrypt)"
+    exit 1
+    ;;
+esac
+
+PRESET=".env.$1"
+if [ ! -f "$PRESET" ]; then
+  echo "Missing $PRESET"
+  exit 1
+fi
+
+cp "$PRESET" .env
+echo "Using $PRESET → .env"
+exec docker compose up foodbook --build -d

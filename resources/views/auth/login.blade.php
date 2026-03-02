@@ -5,8 +5,7 @@
 <div>
     <h2 class="text-xl font-semibold text-gray-900">Log in to your account</h2>
     <p class="mt-1 text-sm text-gray-600">
-        Don't have an account?
-        <a href="{{ route('register') }}" class="text-primary-600 hover:text-primary-700">Sign up</a>
+        New accounts are not available at this time.
     </p>
 
     <form class="mt-6 space-y-4" method="POST" action="{{ route('login') }}">
