@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
-# Usage: ./up foodbook        → local (ports 8081/8444, APP_URL=https://foodbook)
-#        ./up foodbook.uk     → production (ports 80/443, APP_URL=https://foodbook.uk)
-# Copies the right .env preset to .env and runs docker compose up foodbook --build -d.
+# Usage: ./up foodbook        → local (ports 8081/8444, self-signed cert, APP_URL=https://foodbook)
+#        ./up foodbook.uk     → production (ports 80/443; Let's Encrypt if LETSENCRYPT_EMAIL set and DNS/80 reachable, else self-signed)
+# Copies the right .env preset to .env, runs compose down to free ports, then compose up foodbook --build -d.
 
 set -e
 
@@ -11,7 +11,7 @@ case "$1" in
   *)
     echo "Usage: $0 foodbook|foodbook.uk"
     echo "  foodbook    – local (FOODBOOK_BIND=127.0.0.1, ports 8081/8444)"
-    echo "  foodbook.uk – production (ports 80/443, Let's Encrypt)"
+    echo "  foodbook.uk – production (ports 80/443; set LETSENCRYPT_EMAIL for Let's Encrypt, else self-signed)"
     exit 1
     ;;
 esac
@@ -24,4 +24,6 @@ fi
 
 cp "$PRESET" .env
 echo "Using $PRESET → .env"
+# Tear down any existing container so host ports are free (avoids "port already in use" on first run).
+docker compose down 2>/dev/null || true
 exec docker compose up foodbook --build -d
