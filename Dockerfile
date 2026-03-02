@@ -20,20 +20,25 @@ RUN rm -f /etc/nginx/sites-enabled/default \
 WORKDIR /var/www/html
 
 # --- Dependencies ---
-# Run on host first: composer install --no-dev --no-scripts --no-autoloader && npm ci && npm run build
 FROM base AS deps
 
+# Node only for this stage (not in final image)
+ARG NODE_VERSION=20
+RUN curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
 COPY composer.json composer.lock* ./
-COPY vendor ./vendor
+RUN composer install --no-dev --no-scripts --no-interaction
 
 COPY package.json package-lock.json* ./
-COPY node_modules ./node_modules
+RUN npm ci
 
-# --- Frontend (pre-built on host) ---
+# --- Frontend (build assets in container) ---
 FROM deps AS frontend
 
 COPY . .
-# public/build comes from host (npm run build); no network in container
+RUN npm run build
 
 # --- Final image ---
 FROM base
