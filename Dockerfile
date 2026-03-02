@@ -1,3 +1,4 @@
+ARG NODE_VERSION=20
 FROM php:8.4-fpm AS base
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -19,23 +20,19 @@ RUN rm -f /etc/nginx/sites-enabled/default \
 
 WORKDIR /var/www/html
 
-# --- Dependencies ---
+# --- PHP dependencies ---
 FROM base AS deps
-
-# Node only for this stage (not in final image)
-ARG NODE_VERSION=20
-RUN curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | bash - \
-    && apt-get install -y --no-install-recommends nodejs \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 COPY composer.json composer.lock* ./
 RUN composer install --no-dev --no-scripts --no-interaction
 
+# --- Frontend (build assets using official Node image; no NodeSource) ---
+FROM node:${NODE_VERSION}-bookworm-slim AS frontend
+
+WORKDIR /var/www/html
+
 COPY package.json package-lock.json* ./
 RUN npm ci
-
-# --- Frontend (build assets in container) ---
-FROM deps AS frontend
 
 COPY . .
 RUN npm run build
