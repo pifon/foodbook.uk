@@ -221,7 +221,7 @@ class DirectionParser
         // "and refrigerate" becomes a new step
         $modAlt = implode('|', array_map(fn ($m) => preg_quote($m, '/'), self::MODIFIERS));
         $actionAlt = implode('|', array_map(fn ($a) => preg_quote($a, '/'), self::ACTIONS));
-        $pattern = '/\band\s+(?=(?:' . $modAlt . '\s+' . $actionAlt . '\b|' . $actionAlt . '\b))/i';
+        $pattern = '/\band\s+(?=' . $modAlt . '\s+' . $actionAlt . '\b|' . $actionAlt . '\b)/i';
         $parts = preg_split($pattern, $sentence);
         if (count($parts) > 1) {
             return array_values(array_filter(array_map('trim', $parts), fn ($p) => $p !== ''));
@@ -254,7 +254,7 @@ class DirectionParser
         // Case B: only matched "large pot"; strip "pot of water" and add water as ingredient
         } elseif (
             preg_match(
-                '/^(?:\s*(?:boiling\s+)?pot\s+of\s+water\s*,?\s*)/i',
+                '/^\s*(?:boiling\s+)?pot\s+of\s+water\s*,?\s*/i',
                 $work,
                 $potWaterMatch
             )
@@ -263,7 +263,7 @@ class DirectionParser
             $work = trim($this->remove($work, $potWaterMatch[0]));
         }
 
-        [$action, $actionWord, $work] = $this->extractAction($work);
+        [$action, , $work] = $this->extractAction($work);
         if ($action) {
             $result['type'] = $action;
         }
@@ -303,8 +303,6 @@ class DirectionParser
             unset($result['heat']['temperature']);
             if ($result['heat'] === []) {
                 unset($result['heat']);
-            } else {
-                $result['heat'] = $result['heat'];
             }
         }
 
@@ -438,7 +436,7 @@ class DirectionParser
                 $name = strtolower(trim($ing['name'] ?? ''));
                 $id = strtolower(trim($ing['ingredient_id'] ?? ''));
                 if ($name === 'oven' || $id === 'oven' || preg_match('/^(the|your)\s+oven$/i', $name)) {
-                    if (empty($result['tool'])) {
+                    if (! isset($result['tool']) || $result['tool'] === []) {
                         $result['tool'] = ['name' => 'oven'];
                     }
                     continue;
@@ -452,7 +450,8 @@ class DirectionParser
         }
 
         // Fallback: if no tool was found but sentence starts with "in a/the ...", parse leading phrase as tool
-        if (empty($result['tool']) && preg_match('/^\s*in\s+(?:a|the)\s+/i', $sentence)) {
+        $noToolYet = ! isset($result['tool']) || $result['tool'] === [];
+        if ($noToolYet && preg_match('/^\s*in\s+(?:a|the)\s+/i', $sentence)) {
             $parts = preg_split('/\s*,\s*/', $sentence, 2);
             $leading = trim($parts[0] ?? '');
             if ($leading !== '' && preg_match('/^\s*in\s+(?:a|the)\s+(.+)$/i', $leading, $m)) {
@@ -479,7 +478,7 @@ class DirectionParser
         }
         $beforeWith = preg_replace('/\bcover\b/i', '', $beforeWith);
         $modAlt = implode('|', array_map(fn ($m) => preg_quote($m, '/'), self::MODIFIERS));
-        $beforeWith = preg_replace('/\b(?:' . $modAlt . ')\b/i', '', $beforeWith);
+        $beforeWith = preg_replace('/\b' . $modAlt . '\b/i', '', $beforeWith);
         $beforeWith = preg_replace('/\b(the|a|an)\b/i', '', $beforeWith);
         $beforeWith = $this->normalizeSpaces($beforeWith);
 
@@ -709,14 +708,17 @@ class DirectionParser
     private function extractTool(string $text): array
     {
         $toolAlt = implode('|', array_map(fn ($t) => preg_quote($t, '/'), self::TOOLS));
-        $adjAlt = implode('|', array_map(fn ($a) => preg_quote($a, '/'), self::TOOL_ADJECTIVES));
+        $adjAltWithSpace = implode('|', array_map(
+            fn ($a) => preg_quote($a, '/') . '\s+',
+            self::TOOL_ADJECTIVES
+        ));
 
         // Two-step: find preposition+article, then adjectives+tool in the rest (avoids complex backtracking)
         if (preg_match('/\b(in|on|into|onto|with|using)\s+(?:a\s+|the\s+)/i', $text, $pref, PREG_OFFSET_CAPTURE)) {
             $prefix = $pref[0][0];
-            $start = $pref[0][1];
+            $start = (int) $pref[0][1];
             $rest = substr($text, $start + strlen($prefix));
-            $subPattern = '/^(\s*(?:(?:' . $adjAlt . ')\s+)*)(' . $toolAlt . ')\b/i';
+            $subPattern = '/^(\s*(?:' . $adjAltWithSpace . ')*)(' . $toolAlt . ')\b/i';
             if (preg_match($subPattern, $rest, $m)) {
                 $fullMatch = substr($text, $start, strlen($prefix) + strlen($m[0]));
                 $tool = ['name' => strtolower(trim($m[2]))];
