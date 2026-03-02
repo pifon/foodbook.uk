@@ -1,3 +1,6 @@
+# Ports: leave unset for live (https://foodbook.uk) → 80, 443.
+# Local with reverse-proxy: set FOODBOOK_BIND=127.0.0.1, FOODBOOK_HTTP_PORT=8081, FOODBOOK_HTTPS_PORT=8444 in .env (API uses 8080/8443)
+# so the proxy can bind 80/443; access via https://foodbook (proxy forwards to container).
 services:
   client:
     image: client
@@ -6,10 +9,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    # Bind to 127.0.0.3 only (ensure "127.0.0.3 foodbook" in /etc/hosts). API uses 127.0.0.2.
     ports:
-      - "127.0.0.3:80:80"
-      - "127.0.0.3:443:443"
+      - "${FOODBOOK_BIND:-0.0.0.0}:${FOODBOOK_HTTP_PORT:-80}:80"
+      - "${FOODBOOK_BIND:-0.0.0.0}:${FOODBOOK_HTTPS_PORT:-443}:443"
     volumes:
       - .:/var/www/html
       - /var/www/html/vendor
@@ -26,6 +28,7 @@ services:
 
 networks:
   client_laravel-network:
+    name: client_laravel-network
     driver: bridge
   api_network:
     name: api_laravel-network

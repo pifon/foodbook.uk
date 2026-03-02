@@ -3,6 +3,7 @@
 /**
  * Naming: "API" = external backend at API_BASE_URL. "api" = internal Foodbook proxy routes (/api/*).
  */
+
 return [
     'api' => [
         // API (API_BASE_URL): where outbound requests (login, register, recipes, cuisines) are sent.

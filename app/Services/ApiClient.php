@@ -14,7 +14,7 @@ class ApiClient
         private readonly string $baseUrl,
         private readonly bool $verifySsl,
     ) {
-        if (trim($baseUrl ?? '') === '') {
+        if (trim($baseUrl) === '') {
             throw new \InvalidArgumentException(
                 'API_BASE_URL must be set in .env (API = external backend; api = internal Foodbook proxy).'
             );
@@ -216,14 +216,7 @@ class ApiClient
 
     private function responseStatusText(Response $response): string
     {
-        if (method_exists($response, 'reason')) {
-            return $response->reason() ?? '';
-        }
-        if (method_exists($response, 'getReasonPhrase')) {
-            return $response->getReasonPhrase() ?? '';
-        }
-
-        return 'HTTP ' . $response->status();
+        return $response->reason();
     }
 
     private function extractErrorFromBody(string $body): ?string

@@ -1,0 +1,83 @@
+# Generated at runtime from APP_URL (domain: __APP_DOMAIN__)
+# When behind a reverse proxy that terminates HTTPS, do not redirect port 80 to HTTPS
+map $http_x_forwarded_proto $redirect_http_to_https {
+    default 1;
+    "https" 0;
+}
+
+server {
+    listen 80;
+    server_name __APP_DOMAIN__ _;
+
+    root /var/www/html/public;
+    set $original_request_uri $request_uri;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        if ($redirect_http_to_https) {
+            return 301 https://$host$request_uri;
+        }
+        default_type text/html;
+        try_files /laravel_never_served @laravel;
+    }
+
+    location @laravel {
+        fastcgi_pass 127.0.0.1:9000;
+        include fastcgi_params;
+        fastcgi_param REMOTE_ADDR $remote_addr;
+        fastcgi_param SCRIPT_FILENAME $document_root/index.php;
+        fastcgi_param SCRIPT_NAME /index.php;
+        fastcgi_param REQUEST_URI $original_request_uri;
+        fastcgi_buffers 16 16k;
+        fastcgi_buffer_size 32k;
+    }
+
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff2?)$ {
+        expires 30d;
+        access_log off;
+    }
+
+    error_log /var/log/nginx/error.log;
+    access_log /var/log/nginx/access.log;
+}
+
+server {
+    listen 443 ssl;
+    server_name __APP_DOMAIN__;
+
+    set $original_request_uri $request_uri;
+
+    ssl_certificate /etc/letsencrypt/live/__APP_DOMAIN__/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/__APP_DOMAIN__/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    root /var/www/html/public;
+    default_type text/html;
+
+    # Never try to serve files for / or /index.php: always pass to Laravel (stops 470-byte download).
+    location / {
+        try_files /laravel_never_served @laravel;
+    }
+
+    location @laravel {
+        fastcgi_pass 127.0.0.1:9000;
+        include fastcgi_params;
+        fastcgi_param REMOTE_ADDR $remote_addr;
+        fastcgi_param SCRIPT_FILENAME $document_root/index.php;
+        fastcgi_param SCRIPT_NAME /index.php;
+        fastcgi_param REQUEST_URI $original_request_uri;
+        fastcgi_buffers 16 16k;
+        fastcgi_buffer_size 32k;
+    }
+
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff2?)$ {
+        expires 30d;
+        access_log off;
+    }
+
+    error_log /var/log/nginx/error.log;
+    access_log /var/log/nginx/access.log;
+}
