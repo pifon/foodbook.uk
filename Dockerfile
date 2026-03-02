@@ -32,10 +32,9 @@ FROM node:${NODE_VERSION}-bookworm-slim AS frontend
 WORKDIR /var/www/html
 
 COPY package.json package-lock.json* ./
-RUN npm ci
-
 COPY . .
-RUN npm run build
+# Single RUN so vite build only runs after a successful npm install (same layer = correct node_modules).
+RUN npm install && ./node_modules/.bin/vite build
 
 # --- Final image ---
 FROM base
