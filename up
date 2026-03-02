@@ -1,7 +1,8 @@
 #!/usr/bin/env sh
-# Usage: ./up foodbook        → local (ports 8081/8444, self-signed cert, APP_URL=https://foodbook)
-#        ./up foodbook.uk     → production (ports 80/443; Let's Encrypt if LETSENCRYPT_EMAIL set and DNS/80 reachable, else self-signed)
-# Copies the right .env preset to .env, runs compose down to free ports, then compose up foodbook --build -d.
+# Usage: ./up foodbook           → local (ports 8081/8444, self-signed cert)
+#        ./up foodbook.uk        → production (ports 80/443; LETSENCRYPT_EMAIL for Let's Encrypt)
+#        ./up foodbook --wipe    → wipe containers, volumes, networks, and image for this project, then start from 0
+# Copies the right .env preset to .env, then compose up foodbook --build -d (optionally after a full wipe).
 
 set -e
 
@@ -9,12 +10,16 @@ case "$1" in
   foodbook|foodbook.uk)
     ;;
   *)
-    echo "Usage: $0 foodbook|foodbook.uk"
+    echo "Usage: $0 foodbook|foodbook.uk [--wipe]"
     echo "  foodbook    – local (FOODBOOK_BIND=127.0.0.1, ports 8081/8444)"
     echo "  foodbook.uk – production (ports 80/443; set LETSENCRYPT_EMAIL for Let's Encrypt, else self-signed)"
+    echo "  --wipe      – remove all containers, volumes, networks, and the built image for this project, then start fresh"
     exit 1
     ;;
 esac
+
+WIPE=
+[ "$2" = "--wipe" ] && WIPE=1
 
 PRESET=".env.$1"
 if [ ! -f "$PRESET" ]; then
@@ -24,6 +29,13 @@ fi
 
 cp "$PRESET" .env
 echo "Using $PRESET → .env"
+
+if [ -n "$WIPE" ]; then
+  echo "Wiping project: containers, volumes, networks, and image..."
+  docker compose down -v --rmi local --remove-orphans 2>/dev/null || true
+  echo "Wipe done. Starting from 0."
+fi
+
 # Tear down any existing container so host ports are free (avoids "port already in use" on first run).
 docker compose down 2>/dev/null || true
 exec docker compose up foodbook --build -d
