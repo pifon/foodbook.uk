@@ -202,6 +202,7 @@
 
             <div class="mt-4 rounded-lg border border-dashed border-gray-300 bg-gray-50/50 p-4">
                 <label for="step-input" class="mb-1.5 block text-xs font-medium text-gray-500">Describe the next step</label>
+                <p id="step-error" class="mb-2 hidden text-sm text-red-600" role="alert"></p>
                 <div class="flex gap-2">
                     <input type="text" id="step-input"
                         placeholder="e.g. Roast the chicken in the oven for 40-45 minutes at 475°F"
@@ -346,7 +347,7 @@
     var stepInput = document.getElementById('step-input');
     var addStepBtn = document.getElementById('add-step-btn');
     var previewEl = document.getElementById('step-preview');
-    var detectedInline = document.getElementById('detected-inline');
+    var stepErrorEl = document.getElementById('step-error');
     var jsonDetails = document.getElementById('step-json-details');
     var jsonOutput = document.getElementById('json-output');
     var toolsRequiredWrap = document.getElementById('tools-required-wrap');
@@ -1180,17 +1181,25 @@
     /* ── add step from input: send only text to from-text API, then update UI from response ── */
 
     function commitStep() {
-        var text = stepInput.value.trim();
+        var text = stepInput && stepInput.value.trim();
         if (!text) return;
         if (!recipeSlug) {
-            stepInput.setCustomValidity('Create the recipe first (fill title and cuisine).');
-            stepInput.reportValidity();
+            if (stepInput) {
+                stepInput.setCustomValidity('Create the recipe first (fill title and cuisine).');
+                stepInput.reportValidity();
+            }
             return;
         }
-        stepInput.setCustomValidity('');
+        if (stepInput) stepInput.setCustomValidity('');
 
-        addStepBtn.disabled = true;
-        addStepBtn.textContent = '…';
+        if (addStepBtn) {
+            addStepBtn.disabled = true;
+            addStepBtn.textContent = '…';
+        }
+        if (stepErrorEl) {
+            stepErrorEl.textContent = '';
+            stepErrorEl.classList.add('hidden');
+        }
 
         var url = getDirectionsFromTextUrl();
         fetch(url, {
@@ -1212,25 +1221,45 @@
             });
             return r.json();
         }).then(function (body) {
-            if (!body) return;
-            applyResponseToUi(body.data, Object.assign({}, body.meta || {}, body.included ? { included: body.included } : {}), text);
-            finishCommit();
+            if (!body) {
+                finishCommit();
+                return;
+            }
+            var data = body.data != null ? body.data : body.directions;
+            var meta = Object.assign({}, body.meta || {}, body.included ? { included: body.included } : {});
+            applyResponseToUi(data, meta, text);
             refreshIngredientsFromApi();
+            if (stepInput) {
+                stepInput.value = '';
+                stepInput.focus();
+            }
         }).catch(function (err) {
             console.error('From-text error:', err);
-            addStepBtn.disabled = false;
-            addStepBtn.textContent = 'Add';
+            if (stepErrorEl) {
+                stepErrorEl.textContent = err && err.message ? err.message : 'Adding direction failed. Try again.';
+                stepErrorEl.classList.remove('hidden');
+            }
+            if (addStepBtn) {
+                addStepBtn.disabled = false;
+                addStepBtn.textContent = 'Add';
+            }
+        }).finally(function () {
+            finishCommit();
         });
     }
 
     function finishCommit() {
-        stepInput.value = '';
-        previewEl.classList.add('hidden');
+        if (previewEl) previewEl.classList.add('hidden');
         lastParsed = null;
         lastParsedText = '';
-        addStepBtn.disabled = false;
-        addStepBtn.textContent = 'Add';
-        stepInput.focus();
+        if (stepErrorEl) {
+            stepErrorEl.textContent = '';
+            stepErrorEl.classList.add('hidden');
+        }
+        if (addStepBtn) {
+            addStepBtn.disabled = false;
+            addStepBtn.textContent = 'Add';
+        }
     }
 
     addStepBtn.addEventListener('click', function (e) { e.preventDefault(); commitStep(); });

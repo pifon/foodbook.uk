@@ -1,6 +1,7 @@
 #!/usr/bin/env sh
 # Usage: ./up [--wipe]
 # Set APP_URL and API_BASE_URL in .env before running. Optionally APP_ENV and APP_DEBUG for non-production.
+# For proxy (e.g. test.foodbook.uk): set APP_URL=https://test.foodbook.uk, API_BASE_URL=..., FOODBOOK_HTTP_PORT=8080, then ./up. See Docs/PROXY.md.
 set -e
 
 PATH="/opt/homebrew/bin:/usr/local/bin:${PATH:-}"
@@ -9,6 +10,12 @@ export PATH
 WIPE=
 [ "$1" = "--wipe" ] && WIPE=1
 
+# Require .env so docker compose and Laravel have config
+if [ ! -f .env ]; then
+  echo "Missing .env. Create .env with at least APP_URL, API_BASE_URL (see Docs/SETTINGS.md or Docs/PROXY.md)."
+  exit 1
+fi
+
 if [ -n "$WIPE" ]; then
   echo "Wiping project: containers, volumes, networks, and image..."
   docker compose down -v --rmi local --remove-orphans 2>/dev/null || true
@@ -16,20 +23,46 @@ if [ -n "$WIPE" ]; then
 fi
 
 # Ensure APP_KEY is set before starting (Laravel 500s without it).
-if [ -f .env ]; then
-  if grep -qE '^APP_KEY=\s*$' .env 2>/dev/null; then
-    NEW_KEY="base64:$(openssl rand -base64 32)"
-    if [ -n "$NEW_KEY" ]; then
-      sed -i "s|^APP_KEY=.*|APP_KEY=$NEW_KEY|" .env
-      echo "Set APP_KEY in .env (was empty)."
-    fi
-  elif ! grep -q '^APP_KEY=' .env 2>/dev/null; then
-    NEW_KEY="base64:$(openssl rand -base64 32)"
-    if [ -n "$NEW_KEY" ]; then
-      echo "APP_KEY=$NEW_KEY" >> .env
-      echo "Set APP_KEY in .env (was missing)."
-    fi
+# Use temp file for sed so it works on both Linux (sed -i) and macOS (sed -i '').
+if grep -qE '^APP_KEY=\s*$' .env 2>/dev/null; then
+  NEW_KEY="base64:$(openssl rand -base64 32)"
+  if [ -n "$NEW_KEY" ]; then
+    sed "s|^APP_KEY=.*|APP_KEY=$NEW_KEY|" .env > .env.appkey.tmp && mv .env.appkey.tmp .env
+    echo "Set APP_KEY in .env (was empty)."
   fi
+elif ! grep -q '^APP_KEY=' .env 2>/dev/null; then
+  NEW_KEY="base64:$(openssl rand -base64 32)"
+  if [ -n "$NEW_KEY" ]; then
+    echo "APP_KEY=$NEW_KEY" >> .env
+    echo "Set APP_KEY in .env (was missing)."
+  fi
+fi
+
+# Resolve host ports we're about to bind (same logic as docker-compose.yml)
+HTTP_HOST_PORT=80
+HTTPS_HOST_PORT=443
+[ -f .env ] && grep -qE '^FOODBOOK_HTTP_PORT=[0-9]+' .env 2>/dev/null && HTTP_HOST_PORT=$(grep -E '^FOODBOOK_HTTP_PORT=' .env | head -1 | cut -d= -f2)
+[ -f .env ] && grep -qE '^FOODBOOK_HTTPS_PORT=[0-9]+' .env 2>/dev/null && HTTPS_HOST_PORT=$(grep -E '^FOODBOOK_HTTPS_PORT=' .env | head -1 | cut -d= -f2)
+
+# Fail fast if ports are already in use (avoids Docker "port is already allocated" error).
+port_in_use() {
+  _port="$1"
+  # Match :PORT at end of address (so 80 does not match 8080)
+  if command -v ss >/dev/null 2>&1 && ss -tln 2>/dev/null | grep -qE ":${_port}\s"; then
+    return 0
+  fi
+  if command -v netstat >/dev/null 2>&1 && netstat -tln 2>/dev/null | grep -qE ":${_port}\s"; then
+    return 0
+  fi
+  return 1
+}
+if port_in_use "$HTTP_HOST_PORT"; then
+  echo "Port $HTTP_HOST_PORT is already in use. Set FOODBOOK_HTTP_PORT to another port (e.g. 8082) in .env, or stop the process using that port."
+  exit 1
+fi
+if port_in_use "$HTTPS_HOST_PORT"; then
+  echo "Port $HTTPS_HOST_PORT is already in use. Set FOODBOOK_HTTPS_PORT to another port (e.g. 8445) in .env, or stop the process using that port."
+  exit 1
 fi
 
 docker compose down 2>/dev/null || true
