@@ -28,7 +28,7 @@ services:
 networks:
   client_laravel-network:
     name: client_laravel-network
-    driver: bridge
+    external: true
   api_network:
     name: api_laravel-network
     external: true
