@@ -15,5 +15,22 @@ if [ -n "$WIPE" ]; then
   echo "Wipe done."
 fi
 
+# Ensure APP_KEY is set before starting (Laravel 500s without it).
+if [ -f .env ]; then
+  if grep -qE '^APP_KEY=\s*$' .env 2>/dev/null; then
+    NEW_KEY="base64:$(openssl rand -base64 32)"
+    if [ -n "$NEW_KEY" ]; then
+      sed -i "s|^APP_KEY=.*|APP_KEY=$NEW_KEY|" .env
+      echo "Set APP_KEY in .env (was empty)."
+    fi
+  elif ! grep -q '^APP_KEY=' .env 2>/dev/null; then
+    NEW_KEY="base64:$(openssl rand -base64 32)"
+    if [ -n "$NEW_KEY" ]; then
+      echo "APP_KEY=$NEW_KEY" >> .env
+      echo "Set APP_KEY in .env (was missing)."
+    fi
+  fi
+fi
+
 docker compose down 2>/dev/null || true
 exec docker compose up foodbook --build -d
