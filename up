@@ -1,10 +1,14 @@
 #!/usr/bin/env sh
 # Usage: ./up foodbook           → local (ports 8081/8444, self-signed cert)
-#        ./up foodbook.uk        → production (ports 80/443; LETSENCRYPT_EMAIL for Let's Encrypt)
+#        ./up foodbook.uk        → production (host 127.0.0.1:8080/8443; proxy 80/443 to this)
 #        ./up foodbook --wipe    → wipe containers, volumes, networks, and image for this project, then start from 0
 # Copies the right .env preset to .env, then compose up foodbook --build -d (optionally after a full wipe).
 
 set -e
+
+# Prefer Homebrew docker (avoids "client version 1.43 too old" when sh gets a minimal PATH)
+PATH="/opt/homebrew/bin:/usr/local/bin:${PATH:-}"
+export PATH
 
 case "$1" in
   foodbook|foodbook.uk)
@@ -12,7 +16,7 @@ case "$1" in
   *)
     echo "Usage: $0 foodbook|foodbook.uk [--wipe]"
     echo "  foodbook    – local (FOODBOOK_BIND=127.0.0.1, ports 8081/8444)"
-    echo "  foodbook.uk – production (ports 80/443; set LETSENCRYPT_EMAIL for Let's Encrypt, else self-signed)"
+    echo "  foodbook.uk – production (host 127.0.0.1:8080/8443; proxy 80/443 to this)"
     echo "  --wipe      – remove all containers, volumes, networks, and the built image for this project, then start fresh"
     exit 1
     ;;
