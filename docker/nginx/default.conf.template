@@ -7,7 +7,7 @@ map $http_x_forwarded_proto $redirect_http_to_https {
 
 server {
     listen 80;
-    server_name __APP_DOMAIN__ _;
+    server_name __APP_DOMAIN__ www.__APP_DOMAIN__ _;
 
     root /var/www/html/public;
     set $original_request_uri $request_uri;
@@ -46,7 +46,7 @@ server {
 
 server {
     listen 443 ssl;
-    server_name __APP_DOMAIN__;
+    server_name __APP_DOMAIN__ www.__APP_DOMAIN__;
 
     set $original_request_uri $request_uri;
 

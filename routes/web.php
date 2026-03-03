@@ -67,15 +67,12 @@ Route::middleware(['auth.api', 'user.in.session'])->group(function () {
 
 Route::get('/recipes/{slug}', [RecipeController::class, 'show'])->name('recipes.show');
 
-// api (internal): when outbound requests to the API (API_BASE_URL) loop back to this app, forward to the API.
+// api: /api/* forwards to API_BASE_URL.
 $apiProxy = function (Request $request, string $path, string $contentType) {
-    $base = rtrim(config('services.api.internal_base_url') ?: config('services.api.base_url'), '/') ?: null;
+    $base = rtrim(config('services.api.base_url'), '/') ?: null;
     if (! $base) {
         return response()->json([
-            'errors' => [[
-                'title' => 'api proxy not configured',
-                'detail' => 'Set API_INTERNAL_BASE_URL (e.g. https://172.18.0.3/api) so /api/* forwards.',
-            ]],
+            'errors' => [['title' => 'api proxy not configured', 'detail' => 'Set API_BASE_URL in .env.']],
         ], 502);
     }
     $url = $base . '/' . ltrim($path, '/');
@@ -90,12 +87,12 @@ $apiProxy = function (Request $request, string $path, string $contentType) {
     return response($response->body(), $response->status(), $headers);
 };
 
-// api (internal): forward /api/v1/* to the API when outbound requests loop back to this app.
+// api: forward /api/v1/* to API_BASE_URL.
 $apiV1Proxy = function (Request $request, ?string $path = '') {
-    $base = rtrim(config('services.api.internal_base_url') ?: config('services.api.base_url'), '/') ?: null;
+    $base = rtrim(config('services.api.base_url'), '/') ?: null;
     if (! $base) {
         return response()->json([
-            'errors' => [['title' => 'api proxy not configured', 'detail' => 'Set API_INTERNAL_BASE_URL.']],
+            'errors' => [['title' => 'api proxy not configured', 'detail' => 'Set API_BASE_URL in .env.']],
         ], 502);
     }
     $path = trim($path ?? '', '/');

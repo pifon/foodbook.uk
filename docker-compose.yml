@@ -1,5 +1,4 @@
-# Ports: production (.env.foodbook.uk) → 80, 443. Local (.env.foodbook) → 8081, 8444.
-# Run: ./up foodbook (local) or ./up foodbook.uk (production). This sets .env and starts the stack.
+# Set APP_URL and API_BASE_URL in .env before running. Run: ./up [--wipe]
 services:
   foodbook:
     image: foodbook
@@ -9,8 +8,8 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "${FOODBOOK_BIND:-0.0.0.0}:${FOODBOOK_HTTP_PORT:-80}:80"
-      - "${FOODBOOK_BIND:-0.0.0.0}:${FOODBOOK_HTTPS_PORT:-443}:443"
+      - "80:80"
+      - "443:443"
     volumes:
       - .:/var/www/html
       - /var/www/html/vendor
@@ -18,20 +17,6 @@ services:
       - letsencrypt_foodbook:/etc/letsencrypt
     env_file:
       - .env
-    # So that API_BASE_URL=https://pifon/api reaches the real API: resolve "pifon" to the API container on api_laravel-network.
-    extra_hosts:
-      - "pifon:172.18.0.3"
-    networks:
-      - client_laravel-network
-      - api_network
-
-networks:
-  client_laravel-network:
-    name: client_laravel-network
-    external: true
-  api_network:
-    name: api_laravel-network
-    external: true
 
 volumes:
   letsencrypt_foodbook:

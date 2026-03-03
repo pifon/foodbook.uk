@@ -1,45 +1,19 @@
 #!/usr/bin/env sh
-# Usage: ./up foodbook           → local (ports 8081/8444, self-signed cert)
-#        ./up foodbook.uk        → production (host 127.0.0.1:8080/8443; proxy 80/443 to this)
-#        ./up foodbook --wipe    → wipe containers, volumes, networks, and image for this project, then start from 0
-# Copies the right .env preset to .env, then compose up foodbook --build -d (optionally after a full wipe).
-
+# Usage: ./up [--wipe]
+# Set APP_URL and API_BASE_URL in .env before running. Optionally APP_ENV and APP_DEBUG for non-production.
 set -e
 
-# Prefer Homebrew docker (avoids "client version 1.43 too old" when sh gets a minimal PATH)
 PATH="/opt/homebrew/bin:/usr/local/bin:${PATH:-}"
 export PATH
 
-case "$1" in
-  foodbook|foodbook.uk)
-    ;;
-  *)
-    echo "Usage: $0 foodbook|foodbook.uk [--wipe]"
-    echo "  foodbook    – local (FOODBOOK_BIND=127.0.0.1, ports 8081/8444)"
-    echo "  foodbook.uk – production (host 127.0.0.1:8080/8443; proxy 80/443 to this)"
-    echo "  --wipe      – remove all containers, volumes, networks, and the built image for this project, then start fresh"
-    exit 1
-    ;;
-esac
-
 WIPE=
-[ "$2" = "--wipe" ] && WIPE=1
-
-PRESET=".env.$1"
-if [ ! -f "$PRESET" ]; then
-  echo "Missing $PRESET"
-  exit 1
-fi
-
-cp "$PRESET" .env
-echo "Using $PRESET → .env"
+[ "$1" = "--wipe" ] && WIPE=1
 
 if [ -n "$WIPE" ]; then
   echo "Wiping project: containers, volumes, networks, and image..."
   docker compose down -v --rmi local --remove-orphans 2>/dev/null || true
-  echo "Wipe done. Starting from 0."
+  echo "Wipe done."
 fi
 
-# Tear down any existing container so host ports are free (avoids "port already in use" on first run).
 docker compose down 2>/dev/null || true
 exec docker compose up foodbook --build -d
