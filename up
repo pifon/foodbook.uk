@@ -6,8 +6,10 @@
 
 set -e
 
+PRESET_NAME=
 case "$1" in
   foodbook|foodbook.uk)
+    PRESET_NAME="$1"
     ;;
   *)
     echo "Usage: $0 foodbook|foodbook.uk [--wipe]"
@@ -19,16 +21,49 @@ case "$1" in
 esac
 
 WIPE=
-[ "$2" = "--wipe" ] && WIPE=1
+PROXY=
+shift
+for arg in "$@"; do
+  case "$arg" in
+    --wipe) WIPE=1 ;;
+    --proxy) PROXY=1 ;;
+    *) ;;
+  esac
+done
 
-PRESET=".env.$1"
+PRESET=".env.$PRESET_NAME"
 if [ ! -f "$PRESET" ]; then
   echo "Missing $PRESET"
   exit 1
 fi
 
+# Preserve existing APP_KEY if preset has it empty (avoid 500 after key:generate)
+SAVED_APP_KEY=
+if [ -f .env ] && grep -qE '^APP_KEY=base64:' .env 2>/dev/null; then
+  SAVED_APP_KEY=$(grep -E '^APP_KEY=' .env | head -1)
+fi
 cp "$PRESET" .env
-echo "Using $PRESET → .env"
+if [ -n "$SAVED_APP_KEY" ] && grep -qE '^APP_KEY=\s*$' .env 2>/dev/null; then
+  grep -v '^APP_KEY=' .env > .env.tmp && echo "$SAVED_APP_KEY" >> .env.tmp && mv .env.tmp .env
+fi
+
+if [ -n "$PROXY" ]; then
+  # Behind reverse proxy: don't bind host 80/443 and don't run certbot standalone.
+  sed -i \
+    -e 's|^LETSENCRYPT_EMAIL=.*|LETSENCRYPT_EMAIL=|' \
+    -e 's|^FOODBOOK_BIND=.*|FOODBOOK_BIND=127.0.0.1|' \
+    -e 's|^FOODBOOK_HTTP_PORT=.*|FOODBOOK_HTTP_PORT=8081|' \
+    -e 's|^FOODBOOK_HTTPS_PORT=.*|FOODBOOK_HTTPS_PORT=8444|' \
+    .env 2>/dev/null || true
+  # Ensure keys exist even if missing in preset
+  grep -q '^FOODBOOK_BIND=' .env || printf '\nFOODBOOK_BIND=127.0.0.1\n' >> .env
+  grep -q '^FOODBOOK_HTTP_PORT=' .env || printf 'FOODBOOK_HTTP_PORT=8081\n' >> .env
+  grep -q '^FOODBOOK_HTTPS_PORT=' .env || printf 'FOODBOOK_HTTPS_PORT=8444\n' >> .env
+  grep -q '^LETSENCRYPT_EMAIL=' .env || printf 'LETSENCRYPT_EMAIL=\n' >> .env
+  echo "Using $PRESET → .env (proxy mode: host ports 8081/8444; certbot disabled)"
+else
+  echo "Using $PRESET → .env"
+fi
 
 if [ -n "$WIPE" ]; then
   echo "Wiping project: containers, volumes, networks, and image..."
@@ -38,4 +73,15 @@ fi
 
 # Tear down any existing container so host ports are free (avoids "port already in use" on first run).
 docker compose down 2>/dev/null || true
-exec docker compose up foodbook --build -d
+
+# If a stale container exists outside this compose project, remove it (avoids "container name already in use").
+docker rm -f foodbook 2>/dev/null || true
+docker compose up foodbook --build -d
+
+# If APP_KEY is empty, Laravel will 500. Generate and restart so the app has a key.
+if grep -qE '^APP_KEY=\s*$' .env 2>/dev/null; then
+  echo "APP_KEY was empty; generating key and restarting foodbook..."
+  sleep 3
+  docker exec foodbook php artisan key:generate --force
+  docker restart foodbook
+fi
