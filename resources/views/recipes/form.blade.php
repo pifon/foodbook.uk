@@ -294,10 +294,10 @@
     </div>
 </template>
 
-{{-- Product not found modal: create product then retry direction, or pick a suggested product (overlay / side step) --}}
-<div id="product-not-found-modal" class="fixed inset-0 z-60 hidden items-center justify-center p-4" aria-hidden="true" style="background: rgba(0,0,0,0.55); backdrop-filter: blur(4px);">
+{{-- Product not found: pop-up offering to add a new product (then retry direction) or pick a suggested one --}}
+<div id="product-not-found-modal" class="fixed inset-0 z-[60] hidden items-center justify-center p-4" aria-hidden="true" style="background: rgba(0,0,0,0.55); backdrop-filter: blur(4px); display: none;">
     <div class="w-full max-w-md rounded-2xl border-2 border-primary-200 bg-white p-6 shadow-2xl ring-4 ring-primary-500/10" role="dialog" aria-labelledby="product-not-found-title" aria-modal="true" style="box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25), 0 0 0 1px rgba(0,0,0,0.05);">
-        <h2 id="product-not-found-title" class="text-lg font-semibold text-gray-900">Add missing product</h2>
+        <h2 id="product-not-found-title" class="text-lg font-semibold text-gray-900">Add new product</h2>
         <p id="product-not-found-message" class="mt-2 text-sm text-gray-600"></p>
         <p id="product-create-measure-info" class="mt-1 text-xs text-gray-500 hidden"></p>
         <div id="product-suggested-wrap" class="mt-3 hidden">
@@ -326,8 +326,8 @@
                 <button type="button" id="product-not-found-cancel" class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50">
                     Cancel
                 </button>
-                <button type="button" id="product-create-submit" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-700">
-                    Create product
+                <button type="button" id="product-create-submit" class="rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary-700 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2">
+                    Add new product
                 </button>
             </div>
         </form>
@@ -991,7 +991,9 @@
     function isProductNotFoundError(d) {
         if (!d || !d.errors || !d.errors[0]) return false;
         var err = d.errors[0];
-        return (err.title === 'Product Not Found' || (String(err.status) === '404' && err.detail && err.detail.indexOf('not found') !== -1));
+        if (err.title === 'Product Not Found') return true;
+        if (String(err.status) === '404' && err.detail && (err.detail.indexOf('not found') !== -1 || err.detail.indexOf('Product') !== -1)) return true;
+        return false;
     }
 
     function parseProductSlugFromDetail(d) {
@@ -1019,7 +1021,7 @@
         var descInput = document.getElementById('product-create-description');
         var errorsEl = document.getElementById('product-create-errors');
         if (!modal || !messageEl) return;
-        messageEl.textContent = "The product '" + productSlug + "' was not found. You can create it now, then the direction will be added again.";
+        messageEl.textContent = "The ingredient \"" + (humanizeSlug(productSlug) || productSlug) + "\" is not in your products yet. Add it as a new product below, then the step will be added automatically.";
         var parsedMeasure = null;
         var suggestedProducts = [];
         if (errorResponse && errorResponse.errors && errorResponse.errors[0] && errorResponse.errors[0].meta) {
@@ -1075,6 +1077,7 @@
         if (errorsEl) { errorsEl.classList.add('hidden'); errorsEl.textContent = ''; }
         modal.classList.remove('hidden');
         modal.classList.add('flex');
+        modal.style.display = 'flex';
         modal.setAttribute('aria-hidden', 'false');
         var createBtn = document.getElementById('product-create-submit');
         if (createBtn) {
@@ -1137,6 +1140,7 @@
         if (modal) {
             modal.classList.remove('flex');
             modal.classList.add('hidden');
+            modal.style.display = 'none';
             modal.setAttribute('aria-hidden', 'true');
         }
         pendingDirectionTextForRetry = null;
