@@ -78,7 +78,8 @@ COPY --from=frontend /var/www/html/public/build ./public/build
 # Keep a copy for when host mount overrides public/build and has no build (entrypoint restores it)
 COPY --from=frontend /var/www/html/public/build /opt/foodbook-build
 
-RUN composer dump-autoload --optimize \
+RUN rm -f bootstrap/cache/packages.php bootstrap/cache/services.php \
+    && composer dump-autoload --optimize \
     && chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
 
