@@ -445,11 +445,11 @@ class DirectionParser
             }
         }
 
-        // Fallback: if no tool was found but sentence starts with "in a/the ...", parse leading phrase as tool
-        if (! isset($result['tool']) && preg_match('/^\s*in\s+(?:a|the)\s+/i', $sentence)) {
+        // Fallback: if no tool was found but sentence starts with "in [a/the] ...", parse leading phrase as tool
+        if (! isset($result['tool']) && preg_match('/^\s*in\s+(?:a|the)?\s+/i', $sentence)) {
             $parts = preg_split('/\s*,\s*/', $sentence, 2);
             $leading = trim($parts[0] ?? '');
-            if ($leading !== '' && preg_match('/^\s*in\s+(?:a|the)\s+(.+)$/i', $leading, $m)) {
+            if ($leading !== '' && preg_match('/^\s*in\s+(?:a|the)?\s+(.+)$/i', $leading, $m)) {
                 $afterArticle = trim($m[1]);
                 $toolFromPhrase = $this->parseToolPhrase($afterArticle);
                 if ($toolFromPhrase !== null) {
@@ -703,14 +703,17 @@ class DirectionParser
 
     private function extractTool(string $text): array
     {
-        $toolAlt = implode('|', array_map(fn ($t) => preg_quote($t, '/'), self::TOOLS));
+        // Longest tool names first so "mixing bowl" matches before "bowl"
+        $toolsSorted = self::TOOLS;
+        usort($toolsSorted, fn ($a, $b) => strlen($b) - strlen($a));
+        $toolAlt = implode('|', array_map(fn ($t) => preg_quote($t, '/'), $toolsSorted));
         $adjAltWithSpace = implode('|', array_map(
             fn ($a) => preg_quote($a, '/') . '\s+',
             self::TOOL_ADJECTIVES
         ));
 
-        // Two-step: find preposition+article, then adjectives+tool in the rest (avoids complex backtracking)
-        if (preg_match('/\b(in|on|into|onto|with|using)\s+(?:a\s+|the\s+)/i', $text, $pref, PREG_OFFSET_CAPTURE)) {
+        // Preposition + optional article (so "In mixing bowl" and "In a large bowl" both match)
+        if (preg_match('/\b(in|on|into|onto|with|using)\s+(?:a\s+|the\s+)?/i', $text, $pref, PREG_OFFSET_CAPTURE)) {
             $prefix = $pref[0][0];
             $start = (int) $pref[0][1];
             $rest = substr($text, $start + strlen($prefix));

@@ -23,18 +23,41 @@ WORKDIR /var/www/html
 # --- PHP dependencies ---
 FROM base AS deps
 
-COPY composer.json composer.lock* ./
-RUN composer install --no-dev --no-scripts --no-interaction
+RUN apt-get update && apt-get install -y --no-install-recommends git \
+    && apt-get clean && rm -rf /var/lib/apt/lists/* \
+    && update-ca-certificates
 
-# --- Frontend (build assets using official Node image; no NodeSource) ---
-FROM node:${NODE_VERSION}-bookworm-slim AS frontend
+COPY composer.json composer.lock* ./
+ENV COMPOSER_PROCESS_TIMEOUT=600
+# Relax SSL for Composer so dist downloads work behind strict proxies / corporate TLS inspection
+RUN composer config -g secure-http false \
+    && composer install --no-dev --no-scripts --no-interaction --prefer-dist
+
+# --- Frontend (build assets): install Yarn via npm (with relaxed TLS), then use Yarn to avoid npm "Exit handler never called" bug.
+FROM node:${NODE_VERSION}-bookworm AS frontend
 
 WORKDIR /var/www/html
 
-COPY package.json package-lock.json* ./
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && update-ca-certificates
+
+# Install Yarn from tarball via curl (-k fallback for strict proxies). Overwrite Corepack shim so we use real Yarn.
+RUN curl -fsSL -o /tmp/yarn.tgz "https://registry.npmjs.org/yarn/-/yarn-1.22.22.tgz" \
+    || curl -fk -o /tmp/yarn.tgz "https://registry.npmjs.org/yarn/-/yarn-1.22.22.tgz" \
+    && (corepack disable yarn 2>/dev/null || true) \
+    && rm -f /usr/local/bin/yarn /usr/local/bin/yarnpkg 2>/dev/null || true \
+    && npm install -g --force /tmp/yarn.tgz \
+    && rm /tmp/yarn.tgz
 COPY . .
-# Single RUN so vite build only runs after a successful npm install (same layer = correct node_modules).
-RUN npm install && ./node_modules/.bin/vite build
+# Relax TLS for yarn install only (strict proxies); Yarn has its own strict-ssl, Node has NODE_TLS_REJECT_UNAUTHORIZED.
+ENV NODE_TLS_REJECT_UNAUTHORIZED=0
+RUN yarn config set strict-ssl false \
+    && yarn import 2>/dev/null || true \
+    && yarn install \
+    && yarn run build
 
 # --- Final image ---
 FROM base

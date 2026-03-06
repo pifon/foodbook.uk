@@ -1,6 +1,7 @@
 #!/usr/bin/env sh
 # Usage: ./up [--wipe]
 # Set APP_URL and API_BASE_URL in .env before running. Optionally APP_ENV and APP_DEBUG for non-production.
+# For https://food use APP_URL=https://food in .env and add "127.0.0.1 food" to /etc/hosts.
 set -e
 
 PATH="/opt/homebrew/bin:/usr/local/bin:${PATH:-}"
@@ -20,7 +21,7 @@ if [ -f .env ]; then
   if grep -qE '^APP_KEY=\s*$' .env 2>/dev/null; then
     NEW_KEY="base64:$(openssl rand -base64 32)"
     if [ -n "$NEW_KEY" ]; then
-      sed -i "s|^APP_KEY=.*|APP_KEY=$NEW_KEY|" .env
+      sed "s|^APP_KEY=.*|APP_KEY=$NEW_KEY|" .env > .env.tmp && mv .env.tmp .env
       echo "Set APP_KEY in .env (was empty)."
     fi
   elif ! grep -q '^APP_KEY=' .env 2>/dev/null; then

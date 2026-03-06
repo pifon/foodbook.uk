@@ -295,7 +295,7 @@
 </template>
 
 {{-- Product not found modal: create product then retry direction, or pick a suggested product (overlay / side step) --}}
-<div id="product-not-found-modal" class="fixed inset-0 z-[60] flex hidden items-center justify-center p-4" aria-hidden="true" style="background: rgba(0,0,0,0.55); backdrop-filter: blur(4px);">
+<div id="product-not-found-modal" class="fixed inset-0 z-60 hidden items-center justify-center p-4" aria-hidden="true" style="background: rgba(0,0,0,0.55); backdrop-filter: blur(4px);">
     <div class="w-full max-w-md rounded-2xl border-2 border-primary-200 bg-white p-6 shadow-2xl ring-4 ring-primary-500/10" role="dialog" aria-labelledby="product-not-found-title" aria-modal="true" style="box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25), 0 0 0 1px rgba(0,0,0,0.05);">
         <h2 id="product-not-found-title" class="text-lg font-semibold text-gray-900">Add missing product</h2>
         <p id="product-not-found-message" class="mt-2 text-sm text-gray-600"></p>
@@ -412,8 +412,7 @@
     function renderReadOnlyIngredients() {
         if (!ingredientsEl) return;
         ingredientsEl.innerHTML = '';
-        var list = currentIngredients;
-        list.forEach(function (ing) {
+        currentIngredients.forEach(function (ing) {
             var amount = (ing.amount != null && ing.amount !== '') ? ing.amount : '';
             var measure = (ing.measure != null && ing.measure !== '') ? ing.measure : '';
             var product = (ing.product != null && ing.product !== '') ? ing.product : '';
@@ -591,7 +590,9 @@
             if (!r.ok) throw new Error('HTTP ' + r.status);
             return r.json();
         })
-        .then(onSuccess)
+        .then(function (data) {
+            if (onSuccess) onSuccess(data);
+        })
         .catch(function (e) {
             console.error('Parse error:', e);
             if (onError) onError(e);
@@ -609,14 +610,47 @@
         return parts.join(' ').trim();
     }
 
-    function showPreview(steps) {
-        if (!steps || !steps.length) { previewEl.classList.add('hidden'); return; }
+    function showPreviewLoading() {
+        if (!previewEl || !detectedInline) return;
+        previewEl.classList.remove('hidden');
+        detectedInline.innerHTML = '';
+        detectedInline.appendChild(document.createTextNode('Detecting…'));
+        if (jsonDetails) jsonDetails.classList.add('hidden');
+    }
 
-        var existing = existingProducts();
+    function showPreviewError() {
+        if (!previewEl || !detectedInline) return;
+        previewEl.classList.remove('hidden');
+        detectedInline.innerHTML = '';
+        detectedInline.appendChild(document.createTextNode('Could not parse. Check connection or try again.'));
+        if (jsonDetails) jsonDetails.classList.add('hidden');
+    }
+
+    function showPreview(steps) {
+        if (!previewEl || !detectedInline) return;
+        // Normalize: accept raw array or wrapped { data: [...] }
+        steps = Array.isArray(steps) ? steps : (steps && Array.isArray(steps.data) ? steps.data : []);
+        previewEl.classList.remove('hidden');
+
+        if (!steps.length) {
+            detectedInline.innerHTML = '';
+            detectedInline.appendChild(document.createTextNode('No steps detected.'));
+            if (APP_DEBUG && jsonDetails && jsonOutput) {
+                jsonDetails.classList.remove('hidden');
+                jsonOutput.textContent = JSON.stringify(steps, null, 2);
+            } else if (jsonDetails) {
+                jsonDetails.classList.add('hidden');
+            }
+            return;
+        }
+
+        var existing = [];
+        try { existing = existingProducts(); } catch (e) { console.warn('existingProducts:', e); }
         var fragments = [];
         var totalDurMinutes = 0;
         var seenToolKeys = {};
         var seenIngKeys = {};
+        var seenTypes = {};
 
         function span(cls, text, wrapPlus) {
             if (!text) return;
@@ -646,46 +680,70 @@
             span('inline-block rounded px-1.5 py-0.5 font-medium text-green-700 bg-green-100', label, isNew);
         }
 
-        steps.forEach(function (step) {
-            if (step.tool) addTool(step.tool);
-            if (step.tools && step.tools.length) step.tools.forEach(addTool);
-            (step.ingredients || step.targets || []).forEach(addIngredient);
-            var dur = step.duration;
-            var mins = dur && dur.unit === 'hours' ? dur.value * 60 : (dur ? dur.value : 0);
-            if (mins) totalDurMinutes += mins;
-        });
-
-        if (totalDurMinutes) span('inline-block rounded px-1.5 py-0.5 font-medium text-amber-700 bg-amber-100', totalDurMinutes + ' min', true);
-
-        detectedInline.innerHTML = '';
-        fragments.forEach(function (el) {
-            detectedInline.appendChild(el);
-            if (fragments.indexOf(el) < fragments.length - 1) detectedInline.appendChild(document.createTextNode(' '));
-        });
-
-        if (APP_DEBUG) {
-            jsonDetails.classList.remove('hidden');
-            jsonOutput.textContent = JSON.stringify(steps, null, 2);
-        } else {
-            jsonDetails.classList.add('hidden');
+        try {
+            steps.forEach(function (step) {
+                var op = step.type || step.operation;
+                if (op && typeof op === 'string' && !seenTypes[op]) {
+                    seenTypes[op] = true;
+                    span('inline-block rounded px-1.5 py-0.5 font-medium text-blue-700 bg-blue-100', op, false);
+                }
+                if (step.tool) addTool(step.tool);
+                if (step.tools && step.tools.length) step.tools.forEach(addTool);
+                (step.ingredients || step.targets || []).forEach(addIngredient);
+                var dur = step.duration;
+                var mins = dur && dur.unit === 'hours' ? dur.value * 60 : (dur ? dur.value : 0);
+                if (mins) totalDurMinutes += mins;
+            });
+            if (totalDurMinutes) span('inline-block rounded px-1.5 py-0.5 font-medium text-amber-700 bg-amber-100', totalDurMinutes + ' min', true);
+        } catch (e) {
+            console.error('showPreview:', e);
+            detectedInline.innerHTML = '';
+            detectedInline.appendChild(document.createTextNode('Error showing detected items.'));
+            if (jsonDetails) jsonDetails.classList.add('hidden');
+            return;
         }
 
-        previewEl.classList.toggle('hidden', fragments.length === 0 && !APP_DEBUG);
+        detectedInline.innerHTML = '';
+        if (fragments.length) {
+            fragments.forEach(function (el) {
+                detectedInline.appendChild(el);
+                if (fragments.indexOf(el) < fragments.length - 1) detectedInline.appendChild(document.createTextNode(' '));
+            });
+        } else {
+            detectedInline.appendChild(document.createTextNode('No tools, ingredients or time detected.'));
+        }
+
+        if (APP_DEBUG && jsonDetails && jsonOutput) {
+            jsonDetails.classList.remove('hidden');
+            jsonOutput.textContent = JSON.stringify(steps, null, 2);
+        } else if (jsonDetails) {
+            jsonDetails.classList.add('hidden');
+        }
     }
 
     var previewTimer;
-    stepInput.addEventListener('input', function () {
-        clearTimeout(previewTimer);
-        var text = stepInput.value.trim();
-        if (!text) { previewEl.classList.add('hidden'); lastParsed = null; lastParsedText = ''; return; }
-        previewTimer = setTimeout(function () {
-            serverParse(text, function (steps) {
-                lastParsed = steps;
-                lastParsedText = text;
-                showPreview(steps);
-            });
-        }, 250);
-    });
+    if (stepInput) {
+        stepInput.addEventListener('input', function () {
+            clearTimeout(previewTimer);
+            var text = stepInput.value.trim();
+            if (!text) {
+                if (previewEl) previewEl.classList.add('hidden');
+                lastParsed = null;
+                lastParsedText = '';
+                return;
+            }
+            showPreviewLoading();
+            previewTimer = setTimeout(function () {
+                serverParse(text, function (steps) {
+                    lastParsed = steps;
+                    lastParsedText = text;
+                    showPreview(steps);
+                }, function () {
+                    showPreviewError();
+                });
+            }, 250);
+        });
+    }
 
     /* ── helpers ── */
 
@@ -715,19 +773,12 @@
             });
             return set;
         }
+        if (!ingredientsEl) return set;
         ingredientsEl.querySelectorAll('[data-field="product"]').forEach(function (el) {
             var v = el.value.trim().toLowerCase();
             if (v) set[v] = true;
         });
         return set;
-    }
-
-    function durationToMinutes(dur) {
-        if (!dur) return null;
-        var val = dur.value;
-        if (dur.unit === 'hours') val *= 60;
-        if (dur.unit === 'seconds') val = Math.max(1, Math.round(val / 60));
-        return val;
     }
 
     /* ── row management ── */
@@ -868,41 +919,19 @@
         if (toolsEmpty) toolsEmpty.classList.add('hidden');
     }
 
-    /* ── map parsed steps into form rows; add ingredients, prep time, tools ── */
-
-    function applyParsedSteps(steps, originalText) {
-        (steps || []).forEach(function (step) {
-            var mins = durationToMinutes(step.duration);
-            var ings = step.ingredients || step.targets || [];
-
-            addDirection({
-                notes: originalText,
-                parsed_json: JSON.stringify(step),
-            });
-
-            ings.forEach(function (ing) {
-                ensureIngredient(ing.name, ing.quantity, ingredientNotesFromParsed(ing));
-            });
-
-            if (mins && prepTimeInput) {
-                var current = parseInt(prepTimeInput.value, 10) || 0;
-                var next = current + mins;
-                prepTimeInput.value = next;
-                if (prepTimeDisplay) prepTimeDisplay.textContent = next;
-            }
-
-            if (step.tool) addToolToList(step.tool);
-            if (step.tools && step.tools.length) step.tools.forEach(addToolToList);
-        });
-    }
-
     /* ── apply API from-text response: data (directions) + meta (ingredients, prep_time, tools).
      * Prefer attributes.instruction for step text (includes all ingredients for multi-ingredient steps).
      * parsed_json keeps full direction resource (relationships.ingredients etc.) for future use.
      */
 
     function applyResponseToUi(data, meta, originalText) {
-        data = Array.isArray(data) ? data : (data && typeof data === 'object' ? [data] : []);
+        if (data && typeof data === 'object' && !Array.isArray(data) && Array.isArray(data.directions)) {
+            data = data.directions;
+        } else if (data && typeof data === 'object' && !Array.isArray(data) && Array.isArray(data.data)) {
+            data = data.data;
+        } else {
+            data = Array.isArray(data) ? data : (data && typeof data === 'object' ? [data] : []);
+        }
         meta = meta || {};
         originalText = (originalText && typeof originalText === 'string') ? originalText.trim() : '';
         data.forEach(function (d) {
@@ -943,7 +972,15 @@
             prepTimeInput.value = next;
             if (prepTimeDisplay) prepTimeDisplay.textContent = next;
         }
+        if (meta.cook_time_minutes != null && cookTimeInput) {
+            var cookCurrent = parseInt(cookTimeInput.value, 10) || 0;
+            var cookNext = cookCurrent + (meta.cook_time_minutes | 0);
+            cookTimeInput.value = cookNext;
+            if (cookTimeDisplay) cookTimeDisplay.textContent = cookNext;
+        }
         (meta.tools || []).forEach(addToolToList);
+        syncTimeDisplays();
+        toggleEmpty();
     }
 
     /* ── product not found modal: create product then retry direction ── */
@@ -1037,6 +1074,7 @@
         if (descInput) descInput.value = '';
         if (errorsEl) { errorsEl.classList.add('hidden'); errorsEl.textContent = ''; }
         modal.classList.remove('hidden');
+        modal.classList.add('flex');
         modal.setAttribute('aria-hidden', 'false');
         var createBtn = document.getElementById('product-create-submit');
         if (createBtn) {
@@ -1097,6 +1135,7 @@
     function hideProductNotFoundModal() {
         var modal = document.getElementById('product-not-found-modal');
         if (modal) {
+            modal.classList.remove('flex');
             modal.classList.add('hidden');
             modal.setAttribute('aria-hidden', 'true');
         }
@@ -1180,11 +1219,17 @@
     /* ── add step from input: send only text to from-text API, then update UI from response ── */
 
     function commitStep() {
+        if (!stepInput || !addStepBtn) return;
+        if (stepsSection) stepsSection.classList.remove('hidden');
         var text = stepInput.value.trim();
-        if (!text) return;
+        if (!text) {
+            stepInput.focus();
+            return;
+        }
         if (!recipeSlug) {
-            stepInput.setCustomValidity('Create the recipe first (fill title and cuisine).');
+            stepInput.setCustomValidity('Create the recipe first: fill title and cuisine, then click Create.');
             stepInput.reportValidity();
+            stepInput.focus();
             return;
         }
         stepInput.setCustomValidity('');
@@ -1224,19 +1269,12 @@
     }
 
     function finishCommit() {
-        stepInput.value = '';
-        previewEl.classList.add('hidden');
+        if (stepInput) { stepInput.value = ''; stepInput.focus(); }
+        if (previewEl) previewEl.classList.add('hidden');
         lastParsed = null;
         lastParsedText = '';
-        addStepBtn.disabled = false;
-        addStepBtn.textContent = 'Add';
-        stepInput.focus();
+        if (addStepBtn) { addStepBtn.disabled = false; addStepBtn.textContent = 'Add'; }
     }
-
-    addStepBtn.addEventListener('click', function (e) { e.preventDefault(); commitStep(); });
-    stepInput.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') { e.preventDefault(); commitStep(); }
-    });
 
     (function () {
         var cancelBtn = document.getElementById('product-not-found-cancel');
@@ -1268,7 +1306,16 @@
     if (addDirectionsBtn) addDirectionsBtn.addEventListener('click', function (e) {
         e.preventDefault();
         if (stepsSection) stepsSection.classList.remove('hidden');
+        if (stepInput) { stepInput.focus(); }
     });
+    if (addStepBtn) {
+        addStepBtn.addEventListener('click', function (e) { e.preventDefault(); commitStep(); });
+    }
+    if (stepInput) {
+        stepInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') { e.preventDefault(); commitStep(); }
+        });
+    }
 
     ['title', 'cuisine', 'region', 'cuisine_request', 'description', 'difficulty', 'serves'].forEach(function (name) {
         var el = recipeForm.querySelector('[name="' + name + '"]');
@@ -1294,7 +1341,8 @@
                     var inp = document.createElement('input');
                     inp.type = 'hidden';
                     inp.name = 'ingredients[' + idx + '][' + field + ']';
-                    inp.value = (ing[field] != null) ? String(ing[field]) : '';
+                    var val = ing[field];
+                    inp.value = (val != null) ? String(val) : '';
                     container.appendChild(inp);
                 });
             });
@@ -1307,13 +1355,21 @@
     }
 
     /* ── init: load existing directions/ingredients when editing ── */
-
-    var existingDirections  = @json(($preparation ?? [])['directions'] ?? []);
-    var existingIngredients = @json(($preparation ?? [])['ingredients'] ?? []);
+@php
+    $prep = $preparation ?? [];
+    $initDirections = is_array($prep['directions'] ?? null) ? $prep['directions'] : [];
+    $initIngredients = is_array($prep['ingredients'] ?? null) ? $prep['ingredients'] : [];
+@endphp
+    var existingDirections = [];
+    var existingIngredients = [];
+    (function (d, i) {
+        if (Array.isArray(d)) existingDirections = d;
+        if (Array.isArray(i)) existingIngredients = i;
+    })(@json($initDirections), @json($initIngredients));
 
     syncTimeDisplays();
 
-    if (directionsEl && dirTpl && Array.isArray(existingDirections) && existingDirections.length > 0) {
+    if (directionsEl && dirTpl && existingDirections.length > 0) {
         existingDirections.forEach(function (d) { addDirection(d); });
     }
     if (EDITING && Array.isArray(existingIngredients)) {
@@ -1331,7 +1387,7 @@
     }
 
     toggleEmpty();
-    if (EDITING && stepsSection && (existingDirections.length > 0 || existingIngredients.length > 0)) {
+    if (EDITING && stepsSection) {
         stepsSection.classList.remove('hidden');
     }
 })();

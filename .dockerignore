@@ -1,4 +1,8 @@
 node_modules
+vendor
+/public/build
+/dist
+/dists
 storage/logs/*
 storage/framework/cache/*
 storage/framework/sessions/*
@@ -6,3 +10,4 @@ storage/framework/views/*
 .git
 .idea
 .env
+docker/certs

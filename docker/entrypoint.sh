@@ -30,7 +30,7 @@ APP_DOMAIN=$(echo "$_url" | sed -e 's|https\?://||' -e 's|/.*||' -e 's|:.*||')
 # Obtain or create certificates
 CERT_DIR="/etc/letsencrypt/live/$APP_DOMAIN"
 if [ ! -f "$CERT_DIR/fullchain.pem" ] || [ ! -f "$CERT_DIR/privkey.pem" ]; then
-    if [ -n "$LETSENCRYPT_EMAIL" ] && [ "$APP_DOMAIN" != "localhost" ] && [ "$APP_DOMAIN" != "foodbook" ]; then
+    if [ -n "$LETSENCRYPT_EMAIL" ] && [ "$APP_DOMAIN" != "localhost" ] && [ "$APP_DOMAIN" != "foodbook" ] && [ "$APP_DOMAIN" != "food" ]; then
         # Obtain Let's Encrypt certificate (requires port 80 and DNS for APP_DOMAIN pointing here)
         echo "Obtaining Let's Encrypt certificate for $APP_DOMAIN ..."
         if certbot certonly --standalone -d "$APP_DOMAIN" \
